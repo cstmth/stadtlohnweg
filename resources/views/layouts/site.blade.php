@@ -19,7 +19,7 @@
             </flux:dropdown>
 
             <a href="{{ route('home') }}" wire:navigate class="flex items-center gap-2 font-semibold">
-                <flux:icon name="sparkles" variant="micro" class="text-sky-500" />
+                <flux:icon name="home" variant="mini" class="text-sky-500" />
                 <span class="max-sm:hidden">Waschkeller Stadtlohnweg</span>
                 <span class="sm:hidden">Waschkeller</span>
             </a>
