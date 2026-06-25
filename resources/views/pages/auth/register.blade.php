@@ -73,6 +73,8 @@
             </div>
         </form>
 
+        <x-social-login />
+
         <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600 dark:text-zinc-400">
             <span>{{ __('already_have_account') }}</span>
             <flux:link :href="route('login')" wire:navigate>{{ __('log_in') }}</flux:link>

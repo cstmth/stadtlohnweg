@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\OAuthController;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -26,5 +27,9 @@ Route::post('sprache', function (Request $request) {
 
     return back();
 })->name('locale.update');
+
+// OAuth (Google, Apple)
+Route::get('auth/{provider}', [OAuthController::class, 'redirect'])->name('oauth.redirect');
+Route::get('auth/{provider}/callback', [OAuthController::class, 'callback'])->name('oauth.callback');
 
 require __DIR__.'/settings.php';
