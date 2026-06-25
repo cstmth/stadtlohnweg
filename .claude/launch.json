@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "serve",
+      "runtimeExecutable": "php",
+      "runtimeArgs": ["artisan", "serve", "--port=8377"],
+      "port": 8377
+    }
+  ]
+}
