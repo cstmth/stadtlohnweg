@@ -90,7 +90,7 @@ new #[Layout('layouts::site')] #[Title('my_reservations')] class extends Compone
             }
         }
 
-        if ($reservation) {
+        if ($reservation && ! $reservation->hasPassed()) {
             $id = $reservation->id;
             $reservation->delete();
             unset($this->browserItems[(string) $id]);
@@ -166,9 +166,11 @@ new #[Layout('layouts::site')] #[Title('my_reservations')] class extends Compone
                             <td class="px-4 py-3">{{ __(\App\Models\Reservation::APPLIANCES[$reservation->appliance] ?? $reservation->appliance) }}</td>
                             @guest<td class="px-4 py-3 font-medium">{{ $reservation->room_number }}</td>@endguest
                             <td class="px-4 py-3 text-right">
-                                <flux:button size="xs" variant="subtle" wire:click="confirmDelete({{ $reservation->id }})">
-                                    {{ __('cancel_reservation') }}
-                                </flux:button>
+                                @unless ($past)
+                                    <flux:button size="xs" variant="subtle" wire:click="confirmDelete({{ $reservation->id }})">
+                                        {{ __('cancel_reservation') }}
+                                    </flux:button>
+                                @endunless
                             </td>
                         </tr>
                     @endforeach

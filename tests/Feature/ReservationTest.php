@@ -205,6 +205,25 @@ class ReservationTest extends TestCase
         $this->assertDatabaseHas('reservations', ['id' => $reservation->id]);
     }
 
+    public function test_past_reservations_cannot_be_cancelled(): void
+    {
+        $user = User::factory()->create();
+
+        $reservation = Reservation::factory()->create([
+            'reserved_date' => Carbon::yesterday(),
+            'hour' => 9,
+            'user_id' => $user->id,
+            'pin' => null,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test('pages::calendar')
+            ->call('manage', $reservation->id)
+            ->call('cancel');
+
+        $this->assertDatabaseHas('reservations', ['id' => $reservation->id]);
+    }
+
     public function test_purge_command_removes_reservations_past_retention(): void
     {
         $old = Reservation::factory()->create([
