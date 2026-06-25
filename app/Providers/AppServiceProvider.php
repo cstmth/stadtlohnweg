@@ -37,14 +37,10 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
-            : null,
+        // Mindestens 8 Zeichen, mindestens drei von vier Kategorien:
+        // Großbuchstaben, Kleinbuchstaben, Ziffern, Symbole.
+        Password::defaults(fn (): Password => Password::min(8)
+            ->rules(['regex:/^(?:(?=.*[a-z])(?=.*[A-Z])(?=.*\d)|(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_])|(?=.*[a-z])(?=.*\d)(?=.*[\W_])|(?=.*[A-Z])(?=.*\d)(?=.*[\W_])).+$/'])
         );
     }
 }

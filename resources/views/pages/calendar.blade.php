@@ -32,6 +32,9 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
     /** Wurde die betrachtete Reservierung in diesem Browser angelegt (PIN bekannt)? */
     public bool $knownFromBrowser = false;
 
+    /** ID der zuletzt gebuchten Gastbuchung — damit die Zelle sofort grün rendert. */
+    public ?int $lastBookedId = null;
+
     public function mount(): void
     {
         $this->weekStart = $this->minWeekStart()->toDateString();
@@ -236,7 +239,8 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
         if (Auth::check()) {
             Flux::toast(variant: 'success', text: __('toast_saved'));
         } else {
-            // Gastbuchung im Browser merken (grüne Markierung + PIN-Vorausfüllung).
+            // Sofort grün rendern (serverseitig) + im Browser merken.
+            $this->lastBookedId = $reservation->id;
             $this->dispatch('mine-add', id: $reservation->id, pin: $pinPlain);
             Flux::toast(variant: 'success', text: __('toast_saved_guest'));
         }
@@ -282,12 +286,26 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
         return $res !== null && $res->user_id === null;
     }
 
+    /** Liegt die betrachtete Reservierung bereits in der Vergangenheit? */
+    #[Computed]
+    public function managedIsPast(): bool
+    {
+        return $this->managed !== null && $this->managed->hasPassed();
+    }
+
     public function cancel(): void
     {
         $res = $this->managed;
 
         if ($res === null) {
             Flux::modal('manage')->close();
+
+            return;
+        }
+
+        if ($res->hasPassed()) {
+            Flux::modal('manage')->close();
+            Flux::toast(variant: 'warning', text: __('toast_cannot_cancel_past'));
 
             return;
         }
@@ -395,7 +413,6 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                 –
                 {{ \Illuminate\Support\Carbon::parse($weekStart)->addDays(6)->isoFormat('DD. MMM YYYY') }}
             </flux:heading>
-            <flux:button variant="ghost" size="xs" wire:click="today" class="mt-1">{{ __('today_button') }}</flux:button>
         </div>
 
         <div class="flex w-28 shrink-0 justify-end">
@@ -429,7 +446,7 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                     </th>
                     @foreach ($this->days as $day)
                         @php $isToday = $day->isToday(); @endphp
-                        <th colspan="3" class="border-b border-l border-zinc-200 p-2 text-center dark:border-zinc-700 {{ $isToday ? 'bg-sky-50 dark:bg-sky-950/40' : '' }}">
+                        <th colspan="3" class="border-b border-l-2 border-zinc-300 p-2 text-center dark:border-zinc-600 {{ $isToday ? 'bg-sky-50 dark:bg-sky-950/40' : '' }}">
                             <div class="font-semibold {{ $isToday ? 'text-sky-600 dark:text-sky-400' : '' }}">
                                 {{ $day->isoFormat('dd') }}
                             </div>
@@ -440,10 +457,8 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                 <tr>
                     @foreach ($this->days as $day)
                         @foreach (\App\Models\Reservation::APPLIANCES as $key => $label)
-                            <th class="overflow-hidden border-b border-l border-zinc-200 p-1 text-center text-[10px] font-medium whitespace-nowrap text-zinc-500 dark:border-zinc-700">
-                                <flux:tooltip :content="__($label)">
-                                    <span>{{ __(['left' => 'appliance_left_short', 'right' => 'appliance_right_short', 'dryer' => 'appliance_dryer'][$key]) }}</span>
-                                </flux:tooltip>
+                            <th class="overflow-hidden border-b p-1 text-center text-[10px] font-medium whitespace-nowrap text-zinc-500 dark:border-zinc-700 {{ $key === 'left' ? 'border-l-2 border-zinc-300 dark:border-zinc-600' : 'border-l border-zinc-200' }}">
+                                {{ __(['left' => 'appliance_left_short', 'right' => 'appliance_right_short', 'dryer' => 'appliance_dryer'][$key]) }}
                             </th>
                         @endforeach
                     @endforeach
@@ -460,9 +475,10 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                         @if ($rowIndex === 0 && count($zones['past']) > 0)
                             <td rowspan="{{ $rowCount }}" colspan="{{ count($zones['past']) * 3 }}"
                                 class="border-l border-t border-zinc-200 bg-zinc-50/60 p-4 text-center align-middle dark:border-zinc-700 dark:bg-zinc-900/40">
-                                <span class="mx-auto block max-w-[10rem] text-xs leading-relaxed text-zinc-400 break-words">
+                                <div class="mx-auto flex max-w-[10rem] flex-col items-center gap-2 text-xs leading-relaxed text-zinc-400 break-words">
+                                    <flux:icon name="trash" class="w-4 h-4" />
                                     {{ __('notice_past') }}
-                                </span>
+                                </div>
                             </td>
                         @endif
 
@@ -474,18 +490,23 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                                     $res = $this->reservations->get($dateStr.'|'.$hour.'|'.$appliance);
                                     $bookable = $res === null && $this->isBookable($dateStr, $hour, $appliance);
                                     $mine = $res && $res->user_id !== null && $res->user_id === auth()->id();
+                                    $justBooked = $res && $res->id === $this->lastBookedId;
                                 @endphp
-                                <td class="border-l border-t border-zinc-200 p-0.5 text-center dark:border-zinc-700 {{ $isToday ? 'bg-sky-50/40 dark:bg-sky-950/20' : '' }}">
+                                <td class="border-t border-zinc-200 p-0.5 text-center dark:border-zinc-700 {{ $isToday ? 'bg-sky-50/40 dark:bg-sky-950/20' : '' }} {{ $appliance === 'left' ? 'border-l-2 border-l-zinc-300 dark:border-l-zinc-600' : 'border-l border-l-zinc-200' }}">
                                     @if ($res)
                                         <button
                                             type="button"
                                             data-res-id="{{ $res->id }}"
                                             title="{{ $res->room_number }}"
                                             @click="$wire.manage({{ $res->id }}, $store.mine.get({{ $res->id }}))"
-                                            class="block w-full cursor-pointer truncate rounded-md px-1 py-1.5 text-xs font-medium transition"
-                                            :class="($store.mine.has({{ $res->id }}) || @js($mine))
-                                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-200'
-                                                : 'bg-rose-100 text-rose-800 hover:bg-rose-200 dark:bg-rose-900/40 dark:text-rose-200'"
+                                            @class([
+                                                'block w-full cursor-pointer truncate rounded-md px-1 py-1.5 text-xs font-medium transition',
+                                                'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-200' => $mine || $justBooked,
+                                                'bg-rose-100 text-rose-800 hover:bg-rose-200 dark:bg-rose-900/40 dark:text-rose-200' => ! $mine && ! $justBooked,
+                                            ])
+                                            :class="($store.mine.has({{ $res->id }}))
+                                                ? 'bg-emerald-100! text-emerald-800! hover:bg-emerald-200! dark:bg-emerald-900/50! dark:text-emerald-200!'
+                                                : ''"
                                         >
                                             {{ $res->room_number }}
                                         </button>
@@ -493,9 +514,8 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                                         <button
                                             type="button"
                                             wire:click="book('{{ $dateStr }}', {{ $hour }}, '{{ $appliance }}')"
-                                            class="block w-full cursor-pointer rounded-md px-1 py-1.5 text-xs text-zinc-400 transition hover:bg-sky-100 hover:text-sky-700 dark:hover:bg-sky-900/40 dark:hover:text-sky-300"
+                                            class="h-[28px] block w-full cursor-pointer rounded-md px-1 py-1.5 text-xs text-zinc-400 transition hover:bg-sky-100 hover:text-sky-700 dark:hover:bg-sky-900/40 dark:hover:text-sky-300"
                                         >
-                                            {{ __('free') }}
                                         </button>
                                     @else
                                         <div class="px-1 py-1.5 text-xs text-zinc-300 dark:text-zinc-600">–</div>
@@ -508,9 +528,10 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                         @if ($rowIndex === 0 && count($zones['future']) > 0)
                             <td rowspan="{{ $rowCount }}" colspan="{{ count($zones['future']) * 3 }}"
                                 class="border-l border-t border-zinc-200 bg-zinc-50/60 p-4 text-center align-middle dark:border-zinc-700 dark:bg-zinc-900/40">
-                                <span class="mx-auto block max-w-[10rem] text-xs leading-relaxed text-zinc-400 break-words">
+                                <div class="mx-auto flex max-w-[10rem] flex-col items-center gap-2 text-xs leading-relaxed text-zinc-400 break-words">
+                                    <flux:icon name="calendar" class="w-4 h-4" />
                                     {{ __('notice_future') }}
-                                </span>
+                                </div>
                             </td>
                         @endif
                     </tr>
@@ -524,6 +545,31 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
         <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded bg-rose-200 dark:bg-rose-900/40"></span> {{ __('legend_booked') }}</span>
         <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded bg-emerald-200 dark:bg-emerald-900/50"></span> {{ __('legend_yours') }}</span>
         <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded border border-zinc-300 dark:border-zinc-600"></span> {{ __('legend_free') }}</span>
+    </div>
+
+
+    <div class="flex gap-2 flex-col lg:flex-row">
+        <flux:card class="mt-8 flex-1">
+            <flux:heading size="lg">{{ __('instructions_card_heading') }}</flux:heading>
+
+            @foreach (range(1, 3) as $i)
+            <flux:text class="mt-2">{{ __('instruction_' . $i) }}</flux:text>
+            @endforeach
+        </flux:card>
+
+        <flux:card class="mt-8 flex-1">
+            <flux:heading size="lg">{{ __('rules_card_heading') }}</flux:heading>
+
+            <ol class="mt-4 list-decimal pl-5">
+            @foreach (range(1, 3) as $i)
+                <li class="text-sm text-zinc-500 dark:text-white/70">
+                    <flux:text class="ps-2">{{ __('rule_' . $i) }}</flux:text>
+                </li>
+            @endforeach
+            </ol>
+
+            <flux:text class="mt-4">{{ __('rules_below_list') }} </flux:text>
+        </flux:card>
     </div>
 
     {{-- Buchungs-Modal --}}
@@ -594,7 +640,14 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                     </flux:text>
                 </div>
 
-                @if ($this->canCancelDirectly)
+                @if ($this->managedIsPast)
+                    <flux:callout variant="warning" icon="clock">
+                        {{ __('toast_cannot_cancel_past') }}
+                    </flux:callout>
+                    <div class="flex justify-end">
+                        <flux:modal.close><flux:button variant="ghost">{{ __('close') }}</flux:button></flux:modal.close>
+                    </div>
+                @elseif ($this->canCancelDirectly)
                     <flux:text>{{ __('manage_belongs_account') }}</flux:text>
                     <div class="flex justify-end gap-2">
                         <flux:modal.close><flux:button variant="ghost">{{ __('close') }}</flux:button></flux:modal.close>
