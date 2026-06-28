@@ -153,7 +153,7 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
 
         foreach ($days as $day) {
             $dateStr = $day->format('Y-m-d');
-            $isDefaultDay = in_array($day->dayOfWeek, [Carbon::WEDNESDAY, Carbon::FRIDAY]);
+            $isDefaultDay = in_array($day->dayOfWeek, [Carbon::TUESDAY, Carbon::FRIDAY]);
             $override = $overrides->get($dateStr);
             $luckyNumber = (new \Random\Randomizer(new \Random\Engine\Mt19937(abs(crc32($dateStr)))))->getInt(0, 9);
 
@@ -608,8 +608,8 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
 
                 {{-- "Ab 22 Uhr"-Zeile --}}
                 <tr>
-                    <th class="sticky left-0 z-10 whitespace-nowrap border-r border-t border-zinc-200 bg-zinc-50 p-1 text-center text-xs font-medium text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 h-14">
-                        {{ __('from_22') }}
+                    <th class="sticky left-0 z-10 border-r border-t border-zinc-200 bg-zinc-50 p-1 text-center text-xs font-medium text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 h-14">
+                        {{ __('from_21') }}
                     </th>
                     @foreach ($allDays as $day)
                         @php
