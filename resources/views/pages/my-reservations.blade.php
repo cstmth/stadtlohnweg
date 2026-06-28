@@ -152,7 +152,7 @@ new #[Layout('layouts::site')] #[Title('my_reservations')] class extends Compone
                 <tbody class="divide-y divide-zinc-100 dark:divide-zinc-700">
                     @foreach ($this->reservations as $reservation)
                         @php $past = $reservation->hasPassed(); @endphp
-                        <tr class="{{ $past ? 'text-zinc-400 dark:text-zinc-500' : '' }}">
+                        <tr class="{{ $past ? 'text-zinc-500 dark:text-zinc-400' : '' }}">
                             <td class="px-4 py-3 whitespace-nowrap">
                                 {{ $reservation->reserved_date->isoFormat('dd, DD.MM.YYYY') }}
                                 @if ($reservation->reserved_date->isToday())

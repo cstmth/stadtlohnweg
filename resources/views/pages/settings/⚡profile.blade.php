@@ -113,7 +113,7 @@ new #[Layout('layouts::site')] #[Title('profile_settings')] class extends Compon
                             </flux:text>
 
                             @if (session('status') === 'verification-link-sent')
-                                <flux:text class="mt-2 font-medium !dark:text-green-400 !text-green-600">
+                                <flux:text class="mt-2 font-medium !dark:text-green-400 !text-green-700">
                                     {{ __('verify_resent') }}
                                 </flux:text>
                             @endif

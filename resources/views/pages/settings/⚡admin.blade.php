@@ -126,7 +126,7 @@ new #[Layout('layouts::site')] #[Title('admin')] class extends Component {
                             <flux:button variant="ghost" size="sm" icon="trash" icon:variant="outline"
                                 wire:click="removeAdmin({{ $admin->id }})"
                                 wire:confirm="{{ __('admin_remove_confirm') }}"
-                                class="text-red-500 hover:text-red-600"
+                                class="text-red-600 hover:text-red-600"
                             />
                         @endif
                     </div>
@@ -195,7 +195,7 @@ new #[Layout('layouts::site')] #[Title('admin')] class extends Component {
                             </div>
                             <flux:button variant="ghost" size="sm" icon="trash" icon:variant="outline"
                                 wire:click="deleteEvent({{ $event->id }})"
-                                class="text-red-500 hover:text-red-600"
+                                class="text-red-600 hover:text-red-600"
                             />
                         </div>
                     @endforeach

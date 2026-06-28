@@ -257,7 +257,7 @@ new class extends Component {
                 <div class="space-y-4">
                     <div class="relative flex items-center justify-center w-full">
                         <div class="absolute inset-0 w-full h-px top-1/2 bg-stone-200 dark:bg-stone-600"></div>
-                        <span class="relative px-2 text-sm bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-400">
+                        <span class="relative px-2 text-sm bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-500">
                             {{ __('enter_code_manually') }}
                         </span>
                     </div>

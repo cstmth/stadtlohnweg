@@ -6,7 +6,7 @@
     <body class="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-900 dark:text-white" style="display: grid; grid-template-rows: auto 1fr auto; grid-template-columns: 100%; grid-template-areas: 'header' 'main' 'footer';">
         <flux:header container class="border-b border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
             <a href="{{ route('home') }}" wire:navigate class="flex items-center gap-2 font-semibold">
-                <flux:icon name="home" variant="mini" class="text-sky-500" />
+                <flux:icon name="home" variant="mini" class="text-sky-600" />
                 <span class="max-sm:hidden">{{ __('site_name') }}</span>
                 <span class="sm:hidden">{{ __('site_name_short') }}</span>
             </a>

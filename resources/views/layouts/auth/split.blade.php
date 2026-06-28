@@ -8,7 +8,7 @@
             <div class="bg-muted relative hidden h-full flex-col p-10 text-white lg:flex dark:border-e dark:border-neutral-800">
                 <div class="absolute inset-0 bg-neutral-900"></div>
                 <a href="{{ route('home') }}" class="relative z-20 flex items-center text-lg font-medium" wire:navigate>
-                    <flux:icon name="home" variant="micro" class="me-2 h-7 text-sky-500" />
+                    <flux:icon name="home" variant="micro" class="me-2 h-7 text-sky-600" />
                     {{ config('app.name', 'Laravel') }}
                 </a>
 
@@ -26,7 +26,7 @@
             <div class="w-full lg:p-8">
                 <div class="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
                     <a href="{{ route('home') }}" class="z-20 flex flex-col items-center gap-2 font-medium lg:hidden" wire:navigate>
-                        <flux:icon name="home" variant="micro" class="size-9 text-sky-500" />
+                        <flux:icon name="home" variant="micro" class="size-9 text-sky-600" />
 
                         <span class="sr-only">{{ config('app.name', 'Laravel') }}</span>
                     </a>

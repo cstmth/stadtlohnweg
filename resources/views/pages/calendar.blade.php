@@ -473,7 +473,7 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                             <div @class([
                                 'font-semibold',
                                 'text-sky-600 dark:text-sky-400' => $isToday,
-                                'text-zinc-400 dark:text-zinc-500' => $type !== 'bookable' && ! $isToday,
+                                'text-zinc-500 dark:text-zinc-400' => $type !== 'bookable' && ! $isToday,
                             ])>
                                 {{ $day->isoFormat('dd') }}
                             </div>
@@ -507,7 +507,7 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                         @if ($rowIndex === 0 && $pastDays->isNotEmpty())
                             <td rowspan="{{ count($hours) + 1 }}" colspan="{{ $pastDays->count() * 3 }}"
                                 class="border-l border-l-zinc-200 border-t border-t-zinc-200 bg-zinc-50/60 p-4 text-center align-middle dark:border-l-zinc-700 dark:border-t-zinc-700 dark:bg-zinc-900/40">
-                                <div class="mx-auto flex max-w-[10rem] flex-col items-center gap-2 text-xs leading-relaxed text-zinc-400 break-words">
+                                <div class="mx-auto flex max-w-[10rem] flex-col items-center gap-2 text-xs leading-relaxed text-zinc-500 break-words">
                                     <flux:icon name="trash" class="h-4 w-4" />
                                     {{ __('notice_past') }}
                                 </div>
@@ -561,7 +561,7 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                                             >
                                             </button>
                                         @else
-                                            <div class="px-1 py-1.5 text-xs text-zinc-300 dark:text-zinc-600">–</div>
+                                            <div class="px-1 py-1.5 text-xs text-zinc-400 dark:text-zinc-500">–</div>
                                         @endif
                                     </td>
                                 @endforeach
@@ -572,7 +572,7 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                         @if ($rowIndex === 0 && $futureDays->isNotEmpty())
                             <td rowspan="{{ count($hours) + 1 }}" colspan="{{ $futureDays->count() * 3 }}"
                                 class="border-l-2 border-l-zinc-300 border-t border-t-zinc-200 bg-zinc-50/60 p-4 text-center align-middle dark:border-l-zinc-600 dark:border-t-zinc-700 dark:bg-zinc-900/40">
-                                <div class="mx-auto flex max-w-[10rem] flex-col items-center gap-2 text-xs leading-relaxed text-zinc-400 break-words">
+                                <div class="mx-auto flex max-w-[10rem] flex-col items-center gap-2 text-xs leading-relaxed text-zinc-500 break-words">
                                     <flux:icon name="calendar" class="h-4 w-4" />
                                     {{ __('notice_future') }}
                                 </div>

@@ -309,13 +309,13 @@ new #[Layout('layouts::site')] #[Title('security_settings')] class extends Compo
                                     icon="trash"
                                     icon:variant="outline"
                                     wire:click="confirmDelete({{ $passkey['id'] }})"
-                                    class="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50"
+                                    class="text-red-600 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50"
                                 />
                             </div>
                         @empty
                             <div class="p-8 text-center">
                                 <div class="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800">
-                                    <flux:icon.key class="size-7 text-zinc-400 dark:text-zinc-500" />
+                                    <flux:icon.key class="size-7 text-zinc-500 dark:text-zinc-400" />
                                 </div>
                                 <p class="font-medium">{{ __('passkey_none') }}</p>
                                 <flux:text class="mt-1">{{ __('passkey_add_sub') }}</flux:text>
