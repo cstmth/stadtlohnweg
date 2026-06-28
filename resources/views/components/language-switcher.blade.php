@@ -16,9 +16,7 @@
     @endguest
 >
     <flux:dropdown position="bottom" align="end">
-        <flux:button variant="ghost" size="sm" icon="language" :aria-label="__('change_language')">
-            {{ strtoupper($current) }}
-        </flux:button>
+        <flux:button variant="ghost" size="sm" icon="language" :aria-label="__('change_language')" />
 
         <flux:menu>
             @foreach ($languages as $code => $label)

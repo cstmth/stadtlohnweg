@@ -7,6 +7,7 @@ use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
+use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 /* @chisel-passkeys */
@@ -17,7 +18,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 /* @end-chisel-2fa */
 
-new #[Title('security_settings')] class extends Component {
+new #[Layout('layouts::site')] #[Title('security_settings')] class extends Component {
     use PasswordValidationRules;
 
     public string $current_password = '';
@@ -183,45 +184,46 @@ new #[Title('security_settings')] class extends Component {
 }; ?>
 
 <section class="w-full">
-    @include('partials.settings-heading')
+    <x-pages::settings.layout
+        :heading="Auth::user()->provider ? null : __('update_password')"
+        :subheading="Auth::user()->provider ? null : __('password_hint')"
+    >
+        @unless (Auth::user()->provider)
+            <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
+                <flux:input
+                    wire:model="current_password"
+                    :label="__('current_password')"
+                    type="password"
+                    required
+                    autocomplete="current-password"
+                    viewable
+                />
+                <flux:input
+                    wire:model="password"
+                    :label="__('new_password')"
+                    type="password"
+                    required
+                    autocomplete="new-password"
+                    passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                    viewable
+                />
+                <flux:input
+                    wire:model="password_confirmation"
+                    :label="__('confirm_password')"
+                    type="password"
+                    required
+                    autocomplete="new-password"
+                    passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                    viewable
+                />
 
-    <flux:heading class="sr-only">{{ __('security_settings') }}</flux:heading>
-
-    <x-pages::settings.layout :heading="__('update_password')" :subheading="__('password_hint')">
-        <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
-            <flux:input
-                wire:model="current_password"
-                :label="__('current_password')"
-                type="password"
-                required
-                autocomplete="current-password"
-                viewable
-            />
-            <flux:input
-                wire:model="password"
-                :label="__('new_password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
-            />
-            <flux:input
-                wire:model="password_confirmation"
-                :label="__('confirm_password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
-            />
-
-            <div class="flex items-center gap-4">
-                <flux:button variant="primary" type="submit" data-test="update-password-button">
-                    {{ __('save') }}
-                </flux:button>
-            </div>
-        </form>
+                <div class="flex items-center gap-4">
+                    <flux:button variant="primary" type="submit" data-test="update-password-button">
+                        {{ __('save') }}
+                    </flux:button>
+                </div>
+            </form>
+        @endunless
 
         {{-- @chisel-2fa --}}
         @if ($canManageTwoFactor)

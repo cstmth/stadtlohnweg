@@ -1,4 +1,4 @@
-# Waschkeller Stadtlohnweg
+# Stadtlohnweg Waschliste
 
 Reservierungssystem für die Waschkeller des Studierendenwohnheims Stadtlohnweg (Münster).
 Löst das bisherige Google-Sheets-System ab.
@@ -18,9 +18,9 @@ Gebaut mit **Laravel 13**, **Livewire 4**, **Flux UI**, **Tailwind** und **SQLit
     ein Konto benötigt.
 - Belegte Slots sind **öffentlich sichtbar** (Zimmernummer) und **können nicht überschrieben** werden.
 - Reservierungen lassen sich nur **löschen**, nicht verschieben.
-- **Datenschutz:** Abgelaufene Reservierungen werden nach **14 Tagen** automatisch gelöscht.
-  Öffentlich sind nur zukünftige Slots (der heutige Tag bleibt ganztags sichtbar);
-  eigene Reservierungen sind im Konto bis zu 14 Tage rückwirkend einsehbar.
+- **Datenschutz:** Abgelaufene Reservierungen werden nach **einem Tag** automatisch gelöscht.
+  Nutzerkonten werden nach **zwei Jahren Inaktivität** automatisch entfernt.
+  PINs und Passwörter werden verschlüsselt gespeichert.
 
 ### Zimmernummern-Schema (`aBBBcc`)
 
@@ -37,20 +37,41 @@ npm run dev        # oder: npm run build
 php artisan serve
 ```
 
+## OAuth-Login (Google)
+
+Login per Google ist über [Laravel Socialite](https://laravel.com/docs/socialite) angebunden.
+Ohne Credentials wird der Button nicht angezeigt.
+
+1. Öffne die [Google Cloud Console](https://console.cloud.google.com/).
+2. Erstelle ein Projekt (oder wähle ein bestehendes).
+3. Navigiere zu **APIs & Dienste → Anmeldedaten → Anmeldedaten erstellen → OAuth-Client-ID**.
+4. Wähle Anwendungstyp **Webanwendung**.
+5. Füge unter **Autorisierte Weiterleitungs-URIs** hinzu:
+   ```
+   https://deine-domain.de/auth/google/callback
+   ```
+   Lokal: `http://localhost:8000/auth/google/callback`
+6. Kopiere **Client-ID** und **Clientschlüssel** in die `.env`:
+   ```
+   GOOGLE_CLIENT_ID=123456789-xxx.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=GOCSPX-xxx
+   ```
+
+> Beim ersten Mal muss unter **OAuth-Zustimmungsbildschirm** noch App-Name, E-Mail und Scopes
+> (`email`, `profile`, `openid`) konfiguriert werden. Solange die App im Status „Test" ist,
+> können nur explizit eingetragene Testnutzer sich anmelden.
+
 ## Automatische Löschung (DSGVO)
 
-Der Befehl löscht Reservierungen, die älter als die Aufbewahrungsfrist sind:
+Zwei Befehle laufen automatisch über den Scheduler (`routes/console.php`):
 
-```bash
-php artisan reservations:purge
-```
+| Befehl | Intervall | Beschreibung |
+|---|---|---|
+| `php artisan reservations:purge` | täglich 03:00 | Löscht Reservierungen, die älter als 1 Tag sind |
+| `php artisan accounts:purge` | montags 03:30 | Löscht Nutzerkonten, die seit über 2 Jahren inaktiv sind |
 
-Er ist täglich um 03:00 Uhr eingeplant (`routes/console.php`). Damit der Scheduler läuft,
-auf dem Server einen Cron-Eintrag anlegen:
-
-```cron
-* * * * * cd /pfad/zur/app && php artisan schedule:run >> /dev/null 2>&1
-```
+Auf **Laravel Cloud** läuft der Scheduler automatisch — der Scheduler muss nur in den
+Projekt-Einstellungen aktiviert sein.
 
 ## Tests
 

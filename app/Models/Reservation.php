@@ -28,7 +28,7 @@ class Reservation extends Model
     /**
      * Reservierungen werden aus Datenschutzgründen nach diesem Zeitraum gelöscht.
      */
-    public const RETENTION_DAYS = 14;
+    public const RETENTION_DAYS = 1;
 
     /**
      * Wie weit im Voraus reserviert werden darf.
@@ -48,8 +48,8 @@ class Reservation extends Model
      * @var array<string, string>
      */
     public const BLOCKS = [
-        'A' => 'A-Block',
-        'C' => 'C-Block',
+        'A' => 'block_a',
+        'C' => 'block_c',
     ];
 
     /**

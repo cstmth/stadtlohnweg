@@ -28,8 +28,23 @@ Route::post('sprache', function (Request $request) {
     return back();
 })->name('locale.update');
 
-// OAuth (Google, Apple)
+// OAuth (Google)
 Route::get('auth/{provider}', [OAuthController::class, 'redirect'])->name('oauth.redirect');
 Route::get('auth/{provider}/callback', [OAuthController::class, 'callback'])->name('oauth.callback');
+
+// Konto-Löschung für OAuth-Nutzer per erneuter Anmeldung bestätigen.
+Route::get('konto/loeschen/{provider}', [OAuthController::class, 'redirectForDeletion'])
+    ->middleware('auth')
+    ->name('account.delete.reauth');
+
+// Zimmernummer nach OAuth-Registrierung ergänzen.
+Route::livewire('profil-vervollstaendigen', 'pages::auth.complete-profile')
+    ->middleware('auth')
+    ->name('profile.complete');
+
+// Statische Seiten (Impressum, Datenschutz, Hilfe).
+Route::livewire('impressum', 'pages::legal.imprint')->name('imprint');
+Route::livewire('datenschutz', 'pages::legal.privacy')->name('privacy');
+Route::livewire('hilfe', 'pages::legal.help')->name('help');
 
 require __DIR__.'/settings.php';

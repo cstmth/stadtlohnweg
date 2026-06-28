@@ -4,6 +4,7 @@
         :initials="auth()->user()->initials()"
         icon:trailing="chevrons-up-down"
         data-test="sidebar-menu-button"
+        class="max-sm:[&>span]:hidden max-sm:[&>div:last-child]:hidden"
     />
 
     <flux:menu>
@@ -14,7 +15,9 @@
             />
             <div class="grid flex-1 text-start text-sm leading-tight">
                 <flux:heading class="truncate">{{ auth()->user()->name }}</flux:heading>
-                <flux:text class="truncate">{{ auth()->user()->email }}</flux:text>
+                @if (auth()->user()->room_number)
+                    <flux:text class="truncate">{{ auth()->user()->room_number }}</flux:text>
+                @endif
             </div>
         </div>
         <flux:menu.separator />

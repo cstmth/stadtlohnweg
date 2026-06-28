@@ -81,7 +81,7 @@ class MyReservationsTest extends TestCase
 
         Livewire::actingAs($user)
             ->test('pages::my-reservations')
-            ->assertSee('A-Block')
+            ->assertSee(__('block_a'))
             // Für eingeloggte Nutzer wird die Zimmernummer nicht angezeigt.
             ->assertDontSee('C303');
     }

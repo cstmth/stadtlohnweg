@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\DefectiveAppliance;
+use App\Models\DoenekenEvent;
 use App\Models\Reservation;
 use Flux\Flux;
 use Illuminate\Database\QueryException;
@@ -14,9 +16,6 @@ use Livewire\Component;
 new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Component {
     /** Aktuell angezeigter Block/Keller ('A' oder 'C'). */
     public string $block = 'A';
-
-    /** Montag der angezeigten Woche (Y-m-d). */
-    public string $weekStart = '';
 
     // --- Buchungs-Modal ---
     public string $bookDate = '';
@@ -35,19 +34,19 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
     /** ID der zuletzt gebuchten Gastbuchung — damit die Zelle sofort grün rendert. */
     public ?int $lastBookedId = null;
 
+    /** Wie viele Tage vor heute als "vergangen" angezeigt werden. */
+    private const PAST_DAYS = 2;
+
+    /** Wie viele Tage hinter dem buchbaren Bereich als Hinweis angezeigt werden. */
+    private const FUTURE_HINT_DAYS = 2;
+
     public function mount(): void
     {
-        $this->weekStart = $this->minWeekStart()->toDateString();
-
-        // Mit Konto: zuletzt gewählten Block aus der Datenbank vorbelegen.
         if (Auth::check() && filled(Auth::user()->preferred_block)) {
             $this->block = Auth::user()->preferred_block;
         }
     }
 
-    /**
-     * Block-Wechsel merken: in der Datenbank (mit Konto) und im Browser (localStorage).
-     */
     public function updatedBlock(string $value): void
     {
         if (! array_key_exists($value, Reservation::BLOCKS)) {
@@ -64,105 +63,128 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
     }
 
     // ------------------------------------------------------------------
-    // Wochen-Navigation
+    // Tage berechnen
     // ------------------------------------------------------------------
 
-    private function minWeekStart(): Carbon
-    {
-        return Carbon::today()->startOfWeek(Carbon::MONDAY);
-    }
-
-    private function maxWeekStart(): Carbon
-    {
-        return Carbon::today()
-            ->addMonths(Reservation::MAX_ADVANCE_MONTHS)
-            ->startOfWeek(Carbon::MONDAY);
-    }
-
-    public function previousWeek(): void
-    {
-        $target = Carbon::parse($this->weekStart)->subWeek();
-        $this->weekStart = $target->max($this->minWeekStart())->toDateString();
-    }
-
-    public function nextWeek(): void
-    {
-        $target = Carbon::parse($this->weekStart)->addWeek();
-        $this->weekStart = $target->min($this->maxWeekStart())->toDateString();
-    }
-
-    public function today(): void
-    {
-        $this->weekStart = $this->minWeekStart()->toDateString();
-    }
-
-    #[Computed]
-    public function canGoBack(): bool
-    {
-        return Carbon::parse($this->weekStart)->gt($this->minWeekStart());
-    }
-
-    #[Computed]
-    public function canGoForward(): bool
-    {
-        return Carbon::parse($this->weekStart)->lt($this->maxWeekStart());
-    }
-
-    /** @return array<int, \Illuminate\Support\Carbon> */
+    /**
+     * Alle anzuzeigenden Tage: 2 vergangene + buchbare + 2 Hinweis-Tage.
+     *
+     * @return array<int, Carbon>
+     */
     #[Computed]
     public function days(): array
     {
-        $start = Carbon::parse($this->weekStart);
+        $start = Carbon::today()->subDays(self::PAST_DAYS);
+        $maxBookable = Carbon::today()->addMonths(Reservation::MAX_ADVANCE_MONTHS);
+        $end = $maxBookable->copy()->addDays(self::FUTURE_HINT_DAYS);
 
-        return collect(range(0, 6))
-            ->map(fn (int $offset) => $start->copy()->addDays($offset))
-            ->all();
+        $days = [];
+        $cursor = $start->copy();
+
+        while ($cursor->lte($end)) {
+            $days[] = $cursor->copy();
+            $cursor->addDay();
+        }
+
+        return $days;
     }
 
     /**
-     * Teilt die Woche in zusammenhängende Spalten-Zonen: vergangene Tage,
-     * buchbare Tage (heute … +1 Monat) und zu weit entfernte Tage.
+     * Klassifiziert jeden Tag als 'past', 'bookable' oder 'future'.
      *
-     * @return array{past: array<int, Carbon>, bookable: array<int, Carbon>, future: array<int, Carbon>}
+     * @return array<string, string>
      */
     #[Computed]
-    public function dayZones(): array
+    public function dayTypes(): array
     {
         $today = Carbon::today();
-        $maxDate = Carbon::today()->addMonths(Reservation::MAX_ADVANCE_MONTHS);
+        $maxBookable = Carbon::today()->addMonths(Reservation::MAX_ADVANCE_MONTHS);
 
-        $past = $bookable = $future = [];
-
+        $types = [];
         foreach ($this->days as $day) {
+            $key = $day->format('Y-m-d');
             if ($day->lt($today)) {
-                $past[] = $day;
-            } elseif ($day->gt($maxDate)) {
-                $future[] = $day;
+                $types[$key] = 'past';
+            } elseif ($day->gt($maxBookable)) {
+                $types[$key] = 'future';
             } else {
-                $bookable[] = $day;
+                $types[$key] = 'bookable';
             }
         }
 
-        return ['past' => $past, 'bookable' => $bookable, 'future' => $future];
+        return $types;
     }
 
     /**
-     * Reservierungen der angezeigten Woche, indiziert nach "Datum|Stunde|Gerät".
+     * Reservierungen des gesamten sichtbaren Bereichs, indiziert nach "Datum|Stunde|Gerät".
      *
      * @return \Illuminate\Support\Collection<string, Reservation>
      */
     #[Computed]
     public function reservations()
     {
-        $start = Carbon::parse($this->weekStart);
-        $end = $start->copy()->addDays(6);
+        $days = $this->days;
+        $start = $days[0]->format('Y-m-d');
+        $end = end($days)->format('Y-m-d');
 
         return Reservation::query()
             ->where('block', $this->block)
-            ->whereBetween('reserved_date', [$start->toDateString(), $end->toDateString()])
-            ->upcoming()
+            ->whereBetween('reserved_date', [$start, $end])
             ->get()
             ->keyBy(fn (Reservation $r) => $r->reserved_date->format('Y-m-d').'|'.$r->hour.'|'.$r->appliance);
+    }
+
+    /**
+     * Döneken-Info pro Tag: ['text' => string|null, 'open' => bool]
+     * @return array<string, array{open: bool, text: string|null}>
+     */
+    #[Computed]
+    public function doeneken(): array
+    {
+        $days = $this->days;
+        $start = $days[0]->format('Y-m-d');
+        $end = end($days)->format('Y-m-d');
+
+        $overrides = DoenekenEvent::whereBetween('date', [$start, $end])
+            ->get()
+            ->keyBy(fn ($e) => $e->date->format('Y-m-d'));
+
+        $result = [];
+
+        foreach ($days as $day) {
+            $dateStr = $day->format('Y-m-d');
+            $isDefaultDay = in_array($day->dayOfWeek, [Carbon::WEDNESDAY, Carbon::FRIDAY]);
+            $override = $overrides->get($dateStr);
+            $luckyNumber = (new \Random\Randomizer(new \Random\Engine\Mt19937(abs(crc32($dateStr)))))->getInt(0, 9);
+
+            if ($override) {
+                if ($override->closed) {
+                    $result[$dateStr] = ['open' => false, 'text' => $override->custom_text ?: __('doeneken_irregular_closed')];
+                } else {
+                    $text = $override->custom_text
+                        ? str_replace('{lucky}', (string) $luckyNumber, $override->custom_text)
+                        : __('doeneken_line1')."\n".__('doeneken_line2', ['number' => $luckyNumber]);
+                    $result[$dateStr] = ['open' => true, 'text' => $text];
+                }
+            } elseif ($isDefaultDay) {
+                $result[$dateStr] = [
+                    'open' => true,
+                    'text' => __('doeneken_line1')."\n".__('doeneken_line2', ['number' => $luckyNumber]),
+                ];
+            } else {
+                $result[$dateStr] = ['open' => false, 'text' => null];
+            }
+        }
+
+        return $result;
+    }
+
+    #[Computed]
+    public function defective(): array
+    {
+        return DefectiveAppliance::where('block', $this->block)
+            ->pluck('appliance')
+            ->toArray();
     }
 
     // ------------------------------------------------------------------
@@ -190,7 +212,6 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
     public function store(): void
     {
         if (Auth::check()) {
-            // Mit Konto: Zimmernummer stammt aus dem Profil, keine Eingabe nötig.
             $this->roomNumber = (string) Auth::user()->room_number;
         } else {
             $this->roomNumber = Reservation::normalizeRoom($this->roomNumber);
@@ -224,14 +245,12 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                 'pin' => Auth::check() ? null : $pinPlain,
             ]);
         } catch (QueryException) {
-            // Eindeutiger Index verhindert Doppelbuchungen bei gleichzeitigem Zugriff.
             Flux::modal('book')->close();
             Flux::toast(variant: 'warning', text: __('toast_slot_taken'));
 
             return;
         }
 
-        // Den Belegungsplan neu berechnen, damit die Buchung sofort sichtbar ist.
         unset($this->reservations);
 
         Flux::modal('book')->close();
@@ -239,7 +258,6 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
         if (Auth::check()) {
             Flux::toast(variant: 'success', text: __('toast_saved'));
         } else {
-            // Sofort grün rendern (serverseitig) + im Browser merken.
             $this->lastBookedId = $reservation->id;
             $this->dispatch('mine-add', id: $reservation->id, pin: $pinPlain);
             Flux::toast(variant: 'success', text: __('toast_saved_guest'));
@@ -268,7 +286,6 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
         return $this->manageId ? Reservation::find($this->manageId) : null;
     }
 
-    /** Darf die aktuell betrachtete Reservierung von dieser Person direkt storniert werden? */
     #[Computed]
     public function canCancelDirectly(): bool
     {
@@ -277,7 +294,6 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
         return $res !== null && $res->user_id !== null && $res->user_id === Auth::id();
     }
 
-    /** Handelt es sich um eine Gastbuchung (PIN-geschützt)? */
     #[Computed]
     public function isGuestReservation(): bool
     {
@@ -286,7 +302,6 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
         return $res !== null && $res->user_id === null;
     }
 
-    /** Liegt die betrachtete Reservierung bereits in der Vergangenheit? */
     #[Computed]
     public function managedIsPast(): bool
     {
@@ -310,15 +325,15 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
             return;
         }
 
+        $isAdmin = Auth::check() && Auth::user()->is_admin;
+
         if ($res->user_id !== null) {
-            // Konto-Buchung: nur die Inhaberin/der Inhaber darf stornieren.
-            if ($res->user_id !== Auth::id()) {
+            if ($res->user_id !== Auth::id() && ! $isAdmin) {
                 Flux::toast(variant: 'warning', text: __('toast_belongs_other'));
 
                 return;
             }
-        } else {
-            // Gastbuchung: PIN prüfen (im Browser bekannt oder manuell eingegeben).
+        } elseif (! $isAdmin) {
             $this->validate(
                 ['cancelPin' => ['required', 'digits:4']],
                 attributes: ['cancelPin' => 'PIN'],
@@ -347,7 +362,6 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
     // Hilfslogik
     // ------------------------------------------------------------------
 
-    /** Ist der Slot grundsätzlich buchbar (frei, in der Zukunft, innerhalb eines Monats)? */
     public function isBookable(string $date, int $hour, string $appliance): bool
     {
         if (! array_key_exists($appliance, Reservation::APPLIANCES)) {
@@ -371,6 +385,19 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
     }
 }; ?>
 
+@php
+    $hours = \App\Models\Reservation::hours();
+    $allDays = $this->days;
+    $dayTypes = $this->dayTypes;
+    $applianceKeys = array_keys(\App\Models\Reservation::APPLIANCES);
+    $defectiveAppliances = $this->defective;
+    $colCount = count($allDays) * 3;
+
+    // Zusammenhängende Bereiche für past/future zählen
+    $pastDays = collect($allDays)->filter(fn ($d) => ($dayTypes[$d->format('Y-m-d')] ?? '') === 'past');
+    $futureDays = collect($allDays)->filter(fn ($d) => ($dayTypes[$d->format('Y-m-d')] ?? '') === 'future');
+@endphp
+
 <div
     x-data="{ persistBlock: @js(! auth()->check()) }"
     x-init="
@@ -378,6 +405,17 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
             const saved = localStorage.getItem('washing.block');
             if (saved && saved !== $wire.block) { $wire.set('block', saved); }
         }
+        $nextTick(() => {
+            const grid = $refs.grid;
+            const todayTh = grid?.querySelector('[data-today]');
+            const stickyCol = grid?.querySelector('thead th[rowspan]');
+            if (grid && todayTh && stickyCol) {
+                const gridRect = grid.getBoundingClientRect();
+                const thRect = todayTh.getBoundingClientRect();
+                const stickyWidth = stickyCol.getBoundingClientRect().width;
+                grid.scrollLeft += thRect.left - gridRect.left - stickyWidth;
+            }
+        });
     "
     @mine-add.window="$store.mine.add($event.detail.id, $event.detail.pin)"
     @mine-remove.window="$store.mine.remove($event.detail.id)"
@@ -394,60 +432,49 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
         {{-- Block-Auswahl --}}
         <flux:radio.group wire:model.live="block" variant="segmented">
             @foreach (\App\Models\Reservation::BLOCKS as $value => $label)
-                <flux:radio value="{{ $value }}" label="{{ $label }}" />
+                <flux:radio value="{{ $value }}" label="{{ __($label) }}" />
             @endforeach
         </flux:radio.group>
     </div>
 
-    {{-- Wochen-Navigation: Mitte bleibt fix, auch wenn ein Button fehlt --}}
-    <div class="mb-4 flex items-center gap-3">
-        <div class="flex w-28 shrink-0 justify-start">
-            @if ($this->canGoBack)
-                <flux:button icon="chevron-left" size="sm" wire:click="previousWeek">{{ __('week') }}</flux:button>
-            @endif
-        </div>
-
-        <div class="flex-1 text-center">
-            <flux:heading size="lg">
-                {{ \Illuminate\Support\Carbon::parse($weekStart)->isoFormat('DD. MMM') }}
-                –
-                {{ \Illuminate\Support\Carbon::parse($weekStart)->addDays(6)->isoFormat('DD. MMM YYYY') }}
-            </flux:heading>
-        </div>
-
-        <div class="flex w-28 shrink-0 justify-end">
-            @if ($this->canGoForward)
-                <flux:button icon:trailing="chevron-right" size="sm" wire:click="nextWeek">{{ __('week') }}</flux:button>
-            @endif
-        </div>
-    </div>
-
-    {{-- Kalender-Tabelle --}}
-    @php
-        $hours = \App\Models\Reservation::hours();
-        $rowCount = count($hours);
-        $zones = $this->dayZones;
-    @endphp
-    <div class="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">
-        <table class="w-full min-w-[1180px] table-fixed border-collapse text-sm">
-            {{-- Feste Spaltenbreiten: Uhr-Spalte schmal, die 21 Gerätespalten exakt gleich breit --}}
+    {{-- Kalender-Tabelle: durchgehend scrollbar --}}
+    <div class="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800" x-ref="grid">
+        <table class="table-fixed border-separate border-spacing-0 text-sm" style="width: {{ 3.5 + count($allDays) * 3 * 3.2 }}rem">
             <colgroup>
-                <col style="width: 3.5rem">
-                @foreach ($this->days as $day)
-                    @foreach (array_keys(\App\Models\Reservation::APPLIANCES) as $appliance)
-                        <col>
+                <col style="width: 3.4rem">
+                @foreach ($allDays as $day)
+                    @foreach ($applianceKeys as $appliance)
+                        <col style="width: 3.4rem{{ in_array($appliance, $defectiveAppliances) ? '; background-image: repeating-linear-gradient(-45deg, transparent, transparent 4px, rgba(161,161,170,0.18) 4px, rgba(161,161,170,0.18) 5px)' : '' }}">
                     @endforeach
                 @endforeach
             </colgroup>
-            <thead>
+            <thead class="sticky top-0 z-20">
                 <tr>
-                    <th rowspan="2" class="sticky left-0 z-10 whitespace-nowrap border-b border-r border-zinc-200 bg-zinc-50 p-2 text-xs font-medium text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900">
+                    <th rowspan="2" class="sticky left-0 z-30 whitespace-nowrap border-b border-r border-zinc-200 bg-zinc-50 p-2 text-xs font-medium text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900">
                         {{ __('time') }}
                     </th>
-                    @foreach ($this->days as $day)
-                        @php $isToday = $day->isToday(); @endphp
-                        <th colspan="3" class="border-b border-l-2 border-zinc-300 p-2 text-center dark:border-zinc-600 {{ $isToday ? 'bg-sky-50 dark:bg-sky-950/40' : '' }}">
-                            <div class="font-semibold {{ $isToday ? 'text-sky-600 dark:text-sky-400' : '' }}">
+                    @foreach ($allDays as $dayIdx => $day)
+                        @php
+                            $dateStr = $day->format('Y-m-d');
+                            $type = $dayTypes[$dateStr];
+                            $isToday = $day->isToday();
+                            $isFirst = $dayIdx === 0;
+                        @endphp
+                        <th
+                            colspan="3"
+                            @if ($isToday) data-today @endif
+                            @class([
+                                'border-b border-b-zinc-200 p-2 text-center dark:border-b-zinc-700 bg-white dark:bg-zinc-800',
+                                'border-l-2 border-l-zinc-300 dark:border-l-zinc-600' => ! $isFirst,
+                                'border-l border-l-zinc-200 dark:border-l-zinc-700' => $isFirst,
+                                'bg-sky-50! dark:bg-sky-950!' => $isToday,
+                            ])
+                        >
+                            <div @class([
+                                'font-semibold',
+                                'text-sky-600 dark:text-sky-400' => $isToday,
+                                'text-zinc-400 dark:text-zinc-500' => $type !== 'bookable' && ! $isToday,
+                            ])>
                                 {{ $day->isoFormat('dd') }}
                             </div>
                             <div class="text-xs text-zinc-500">{{ $day->isoFormat('DD.MM.') }}</div>
@@ -455,9 +482,14 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                     @endforeach
                 </tr>
                 <tr>
-                    @foreach ($this->days as $day)
-                        @foreach (\App\Models\Reservation::APPLIANCES as $key => $label)
-                            <th class="overflow-hidden border-b p-1 text-center text-[10px] font-medium whitespace-nowrap text-zinc-500 dark:border-zinc-700 {{ $key === 'left' ? 'border-l-2 border-zinc-300 dark:border-zinc-600' : 'border-l border-zinc-200' }}">
+                    @foreach ($allDays as $dayIdx => $day)
+                        @php $isFirst = $dayIdx === 0; @endphp
+                        @foreach ($applianceKeys as $key)
+                            <th @class([
+                                'overflow-hidden border-b p-1 text-center text-[10px] font-medium whitespace-nowrap text-zinc-500 dark:border-b-zinc-700 bg-white dark:bg-zinc-800',
+                                'border-l-2 border-l-zinc-300 dark:border-l-zinc-600' => $key === 'left' && ! $isFirst,
+                                'border-l border-l-zinc-200 dark:border-l-zinc-700' => $key !== 'left' || $isFirst,
+                            ])>
                                 {{ __(['left' => 'appliance_left_short', 'right' => 'appliance_right_short', 'dryer' => 'appliance_dryer'][$key]) }}
                             </th>
                         @endforeach
@@ -471,71 +503,116 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                             {{ sprintf('%02d–%02d', $hour, $hour + 1) }}
                         </th>
 
-                        {{-- Bereich vor dem heutigen Datum: ein zentrierter Hinweis über alle Zeilen --}}
-                        @if ($rowIndex === 0 && count($zones['past']) > 0)
-                            <td rowspan="{{ $rowCount }}" colspan="{{ count($zones['past']) * 3 }}"
-                                class="border-l border-t border-zinc-200 bg-zinc-50/60 p-4 text-center align-middle dark:border-zinc-700 dark:bg-zinc-900/40">
+                        {{-- Vergangene Tage: Hinweis-Bereich --}}
+                        @if ($rowIndex === 0 && $pastDays->isNotEmpty())
+                            <td rowspan="{{ count($hours) + 1 }}" colspan="{{ $pastDays->count() * 3 }}"
+                                class="border-l border-l-zinc-200 border-t border-t-zinc-200 bg-zinc-50/60 p-4 text-center align-middle dark:border-l-zinc-700 dark:border-t-zinc-700 dark:bg-zinc-900/40">
                                 <div class="mx-auto flex max-w-[10rem] flex-col items-center gap-2 text-xs leading-relaxed text-zinc-400 break-words">
-                                    <flux:icon name="trash" class="w-4 h-4" />
+                                    <flux:icon name="trash" class="h-4 w-4" />
                                     {{ __('notice_past') }}
                                 </div>
                             </td>
                         @endif
 
-                        {{-- Buchbarer Bereich --}}
-                        @foreach ($zones['bookable'] as $day)
-                            @php $dateStr = $day->format('Y-m-d'); $isToday = $day->isToday(); @endphp
-                            @foreach (array_keys(\App\Models\Reservation::APPLIANCES) as $appliance)
-                                @php
-                                    $res = $this->reservations->get($dateStr.'|'.$hour.'|'.$appliance);
-                                    $bookable = $res === null && $this->isBookable($dateStr, $hour, $appliance);
-                                    $mine = $res && $res->user_id !== null && $res->user_id === auth()->id();
-                                    $justBooked = $res && $res->id === $this->lastBookedId;
-                                @endphp
-                                <td class="border-t border-zinc-200 p-0.5 text-center dark:border-zinc-700 {{ $isToday ? 'bg-sky-50/40 dark:bg-sky-950/20' : '' }} {{ $appliance === 'left' ? 'border-l-2 border-l-zinc-300 dark:border-l-zinc-600' : 'border-l border-l-zinc-200' }}">
-                                    @if ($res)
-                                        <button
-                                            type="button"
-                                            data-res-id="{{ $res->id }}"
-                                            title="{{ $res->room_number }}"
-                                            @click="$wire.manage({{ $res->id }}, $store.mine.get({{ $res->id }}))"
-                                            @class([
-                                                'block w-full cursor-pointer truncate rounded-md px-1 py-1.5 text-xs font-medium transition',
-                                                'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-200' => $mine || $justBooked,
-                                                'bg-rose-100 text-rose-800 hover:bg-rose-200 dark:bg-rose-900/40 dark:text-rose-200' => ! $mine && ! $justBooked,
-                                            ])
-                                            :class="($store.mine.has({{ $res->id }}))
-                                                ? 'bg-emerald-100! text-emerald-800! hover:bg-emerald-200! dark:bg-emerald-900/50! dark:text-emerald-200!'
-                                                : ''"
-                                        >
-                                            {{ $res->room_number }}
-                                        </button>
-                                    @elseif ($bookable)
-                                        <button
-                                            type="button"
-                                            wire:click="book('{{ $dateStr }}', {{ $hour }}, '{{ $appliance }}')"
-                                            class="h-[28px] block w-full cursor-pointer rounded-md px-1 py-1.5 text-xs text-zinc-400 transition hover:bg-sky-100 hover:text-sky-700 dark:hover:bg-sky-900/40 dark:hover:text-sky-300"
-                                        >
-                                        </button>
-                                    @else
-                                        <div class="px-1 py-1.5 text-xs text-zinc-300 dark:text-zinc-600">–</div>
-                                    @endif
-                                </td>
-                            @endforeach
+                        {{-- Buchbare Tage --}}
+                        @foreach ($allDays as $day)
+                            @php
+                                $dateStr = $day->format('Y-m-d');
+                                $type = $dayTypes[$dateStr];
+                            @endphp
+                            @if ($type === 'bookable')
+                                @php $isToday = $day->isToday(); @endphp
+                                @foreach ($applianceKeys as $appliance)
+                                    @php
+                                        $res = $this->reservations->get($dateStr.'|'.$hour.'|'.$appliance);
+                                        $bookable = $res === null && $this->isBookable($dateStr, $hour, $appliance);
+                                        $mine = $res && $res->user_id !== null && $res->user_id === auth()->id();
+                                        $justBooked = $res && $res->id === $this->lastBookedId;
+                                        $isDefective = in_array($appliance, $defectiveAppliances);
+                                    @endphp
+                                    <td @class([
+                                        'border-t border-zinc-200 p-0.5 text-center dark:border-zinc-700',
+                                        'bg-sky-50/40 dark:bg-sky-950/20' => $isToday && ! $isDefective,
+                                        'border-l-2 border-l-zinc-300 dark:border-l-zinc-600' => $appliance === 'left' && ! $day->eq($allDays[0]),
+                                        'border-l border-l-zinc-200 dark:border-l-zinc-700' => $appliance !== 'left' || $day->eq($allDays[0]),
+                                    ])>
+                                        @if ($res)
+                                            <button
+                                                type="button"
+                                                data-res-id="{{ $res->id }}"
+                                                title="{{ $res->room_number }}"
+                                                @click="$wire.manage({{ $res->id }}, $store.mine.get({{ $res->id }}))"
+                                                @class([
+                                                    'block w-full cursor-pointer truncate rounded-md px-1 py-1.5 text-xs font-medium transition',
+                                                    'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-200' => $mine || $justBooked,
+                                                    'bg-rose-100 text-rose-800 hover:bg-rose-200 dark:bg-rose-900/40 dark:text-rose-200' => ! $mine && ! $justBooked,
+                                                ])
+                                                :class="($store.mine.has({{ $res->id }}))
+                                                    ? 'bg-emerald-100! text-emerald-800! hover:bg-emerald-200! dark:bg-emerald-900/50! dark:text-emerald-200!'
+                                                    : ''"
+                                            >
+                                                {{ $res->room_number }}
+                                            </button>
+                                        @elseif ($bookable)
+                                            <button
+                                                type="button"
+                                                wire:click="book('{{ $dateStr }}', {{ $hour }}, '{{ $appliance }}')"
+                                                class="block h-[28px] w-full cursor-pointer rounded-md px-1 py-1.5 text-xs text-zinc-400 transition hover:bg-sky-100 hover:text-sky-700 dark:hover:bg-sky-900/40 dark:hover:text-sky-300"
+                                            >
+                                            </button>
+                                        @else
+                                            <div class="px-1 py-1.5 text-xs text-zinc-300 dark:text-zinc-600">–</div>
+                                        @endif
+                                    </td>
+                                @endforeach
+                            @endif
                         @endforeach
 
-                        {{-- Bereich hinter dem Buchungszeitraum: ein zentrierter Hinweis über alle Zeilen --}}
-                        @if ($rowIndex === 0 && count($zones['future']) > 0)
-                            <td rowspan="{{ $rowCount }}" colspan="{{ count($zones['future']) * 3 }}"
-                                class="border-l border-t border-zinc-200 bg-zinc-50/60 p-4 text-center align-middle dark:border-zinc-700 dark:bg-zinc-900/40">
+                        {{-- Zukünftige Hinweis-Tage --}}
+                        @if ($rowIndex === 0 && $futureDays->isNotEmpty())
+                            <td rowspan="{{ count($hours) + 1 }}" colspan="{{ $futureDays->count() * 3 }}"
+                                class="border-l-2 border-l-zinc-300 border-t border-t-zinc-200 bg-zinc-50/60 p-4 text-center align-middle dark:border-l-zinc-600 dark:border-t-zinc-700 dark:bg-zinc-900/40">
                                 <div class="mx-auto flex max-w-[10rem] flex-col items-center gap-2 text-xs leading-relaxed text-zinc-400 break-words">
-                                    <flux:icon name="calendar" class="w-4 h-4" />
+                                    <flux:icon name="calendar" class="h-4 w-4" />
                                     {{ __('notice_future') }}
                                 </div>
                             </td>
                         @endif
                     </tr>
                 @endforeach
+
+                {{-- "Ab 22 Uhr"-Zeile --}}
+                <tr>
+                    <th class="sticky left-0 z-10 whitespace-nowrap border-r border-t border-zinc-200 bg-zinc-50 p-1 text-center text-xs font-medium text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 h-14">
+                        {{ __('from_22') }}
+                    </th>
+                    @foreach ($allDays as $day)
+                        @php
+                            $dateStr = $day->format('Y-m-d');
+                            $type = $dayTypes[$dateStr] ?? null;
+                        @endphp
+                        @if ($type === 'bookable')
+                            @php $dInfo = $this->doeneken[$dateStr] ?? ['open' => false, 'text' => null]; @endphp
+                            <td colspan="3" @class([
+                                'border-t border-zinc-200 p-1 text-center dark:border-zinc-700 bg-white dark:bg-zinc-800',
+                                'border-l-2 border-l-zinc-300 dark:border-l-zinc-600' => ! $day->eq($allDays[0]),
+                                'border-l border-l-zinc-200 dark:border-l-zinc-700' => $day->eq($allDays[0]),
+                                'bg-amber-100! dark:bg-amber-900!' => $dInfo['open'],
+                                'bg-sky-50! dark:bg-sky-950!' => $day->isToday() && ! $dInfo['open'],
+                            ])>
+                                @if ($dInfo['text'])
+                                    <div @class([
+                                        'text-xs leading-tight',
+                                        'text-amber-700 dark:text-amber-300' => $dInfo['open'],
+                                        'text-zinc-500 dark:text-zinc-400' => ! $dInfo['open'],
+                                    ])>
+                                        {!! nl2br(e($dInfo['text'])) !!}
+                                    </div>
+                                @endif
+                            </td>
+                        @endif
+                    @endforeach
+                </tr>
             </tbody>
         </table>
     </div>
@@ -545,19 +622,17 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
         <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded bg-rose-200 dark:bg-rose-900/40"></span> {{ __('legend_booked') }}</span>
         <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded bg-emerald-200 dark:bg-emerald-900/50"></span> {{ __('legend_yours') }}</span>
         <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded border border-zinc-300 dark:border-zinc-600"></span> {{ __('legend_free') }}</span>
+        <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded border border-zinc-300 dark:border-zinc-600" style="background-image: repeating-linear-gradient(-45deg, transparent, transparent 4px, rgba(161,161,170,0.18) 4px, rgba(161,161,170,0.18) 5px)"></span> {{ __('legend_defective') }}</span>
     </div>
 
-
-    <div class="flex gap-2 flex-col lg:flex-row">
-        <flux:card class="mt-8 flex-1">
+    <div class="mt-8 flex gap-2 flex-col lg:flex-row lg:items-start">
+        <flux:card class="flex-1">
             <flux:heading size="lg">{{ __('instructions_card_heading') }}</flux:heading>
 
-            @foreach (range(1, 3) as $i)
-            <flux:text class="mt-2">{{ __('instruction_' . $i) }}</flux:text>
-            @endforeach
+            <flux:text class="mt-2">{{ __('instruction_1') }}</flux:text>
         </flux:card>
 
-        <flux:card class="mt-8 flex-1">
+        <flux:card class="flex-1">
             <flux:heading size="lg">{{ __('rules_card_heading') }}</flux:heading>
 
             <ol class="mt-4 list-decimal pl-5">
@@ -579,7 +654,7 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                 <flux:heading size="lg">{{ __('book_title') }}</flux:heading>
                 @if ($bookDate)
                     <flux:text class="mt-2">
-                        <strong>{{ \App\Models\Reservation::BLOCKS[$block] ?? $block }}</strong> ·
+                        <strong>{{ __(\App\Models\Reservation::BLOCKS[$block] ?? $block) }}</strong> ·
                         {{ __(\App\Models\Reservation::APPLIANCES[$bookAppliance] ?? '') }}<br>
                         {{ \Illuminate\Support\Carbon::parse($bookDate)->isoFormat('dddd, DD.MM.YYYY') }},
                         {{ sprintf('%02d:00–%02d:00', $bookHour, $bookHour + 1) }}
@@ -594,6 +669,12 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                     @endauth
                 @endif
             </div>
+
+            @if ($bookAppliance && in_array($bookAppliance, $this->defective))
+                <div class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                    {{ __('defective_warning') }}
+                </div>
+            @endif
 
             @guest
                 <flux:input
@@ -626,13 +707,13 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
     </flux:modal>
 
     {{-- Storno-Modal --}}
-    <flux:modal name="manage" class="max-w-md">
+    <flux:modal name="manage" class="w-full max-w-lg">
         @if ($this->managed)
-            <div class="space-y-6">
+            <div class="space-y-6" wire:key="manage-{{ $this->managed->id }}">
                 <div>
                     <flux:heading size="lg">{{ __('reservation') }}</flux:heading>
                     <flux:text class="mt-2">
-                        <strong>{{ \App\Models\Reservation::BLOCKS[$this->managed->block] ?? $this->managed->block }}</strong> ·
+                        <strong>{{ __(\App\Models\Reservation::BLOCKS[$this->managed->block] ?? $this->managed->block) }}</strong> ·
                         {{ __(\App\Models\Reservation::APPLIANCES[$this->managed->appliance] ?? '') }}<br>
                         {{ $this->managed->reserved_date->isoFormat('dddd, DD.MM.YYYY') }},
                         {{ sprintf('%02d:00–%02d:00', $this->managed->hour, $this->managed->hour + 1) }}<br>
@@ -676,8 +757,11 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                     <flux:callout variant="warning" icon="lock-closed">
                         {{ __('manage_belongs_other') }}
                     </flux:callout>
-                    <div class="flex justify-end">
+                    <div class="flex justify-end gap-2">
                         <flux:modal.close><flux:button variant="ghost">{{ __('close') }}</flux:button></flux:modal.close>
+                        @if (auth()->check() && auth()->user()->is_admin)
+                            <flux:button wire:click="cancel" variant="danger">{{ __('admin_cancel_reservation') }}</flux:button>
+                        @endif
                     </div>
                 @endif
             </div>

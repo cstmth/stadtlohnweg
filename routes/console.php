@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Abgelaufene Reservierungen täglich nach der Aufbewahrungsfrist löschen (DSGVO).
 Schedule::command('reservations:purge')->dailyAt('03:00');
+
+// Inaktive Nutzerkonten (> 2 Jahre) wöchentlich löschen (DSGVO).
+Schedule::command('accounts:purge')->weeklyOn(1, '03:30');

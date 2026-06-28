@@ -3,7 +3,7 @@
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-900 dark:text-white">
+    <body class="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-900 dark:text-white" style="display: grid; grid-template-rows: auto 1fr auto; grid-template-columns: 100%; grid-template-areas: 'header' 'main' 'footer';">
         <flux:header container class="border-b border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
             {{-- Mobile-Navigation --}}
             <flux:dropdown class="lg:hidden" position="bottom" align="start">
@@ -15,13 +15,18 @@
                     <flux:navmenu.item icon="list-bullet" :href="route('reservations.mine')" :current="request()->routeIs('reservations.mine')" wire:navigate>
                         {{ __('my_reservations') }}
                     </flux:navmenu.item>
+                    @if (auth()->check() && auth()->user()->is_admin)
+                        <flux:navmenu.item icon="wrench-screwdriver" :href="route('admin.edit')" :current="request()->routeIs('admin.edit')" wire:navigate>
+                            {{ __('admin') }}
+                        </flux:navmenu.item>
+                    @endif
                 </flux:navmenu>
             </flux:dropdown>
 
             <a href="{{ route('home') }}" wire:navigate class="flex items-center gap-2 font-semibold">
                 <flux:icon name="home" variant="mini" class="text-sky-500" />
-                <span class="max-sm:hidden">Waschkeller Stadtlohnweg</span>
-                <span class="sm:hidden">Waschkeller</span>
+                <span class="max-sm:hidden">{{ __('site_name') }}</span>
+                <span class="sm:hidden">{{ __('site_name_short') }}</span>
             </a>
 
             <flux:navbar class="ms-6 max-lg:hidden">
@@ -31,11 +36,20 @@
                 <flux:navbar.item icon="list-bullet" :href="route('reservations.mine')" :current="request()->routeIs('reservations.mine')" wire:navigate>
                     {{ __('my_reservations') }}
                 </flux:navbar.item>
+                @if (auth()->check() && auth()->user()->is_admin)
+                    <flux:navbar.item icon="wrench-screwdriver" :href="route('admin.edit')" :current="request()->routeIs('admin.edit')" wire:navigate>
+                        {{ __('admin') }}
+                    </flux:navbar.item>
+                @endif
             </flux:navbar>
 
             <flux:spacer />
 
             <div class="flex items-center gap-2">
+                <div x-data class="contents">
+                    <flux:button variant="ghost" size="sm" icon="sun" :aria-label="__('appearance')" class="dark:!hidden" x-on:click="$flux.appearance = 'dark'" />
+                    <flux:button variant="ghost" size="sm" icon="moon" :aria-label="__('appearance')" class="!hidden dark:!inline-flex" x-on:click="$flux.appearance = 'light'" />
+                </div>
                 <x-language-switcher />
 
                 @auth
@@ -50,6 +64,14 @@
         <flux:main container class="py-8">
             {{ $slot }}
         </flux:main>
+
+        <footer class="border-t border-zinc-200 dark:border-zinc-700 py-6" style="grid-area: footer;">
+            <div class="container mx-auto flex flex-wrap justify-center gap-x-6 gap-y-2 px-4 text-sm text-zinc-500 dark:text-zinc-400">
+                <a href="{{ route('imprint') }}" wire:navigate class="hover:text-zinc-900 dark:hover:text-white">{{ __('imprint') }}</a>
+                <a href="{{ route('privacy') }}" wire:navigate class="hover:text-zinc-900 dark:hover:text-white">{{ __('privacy_policy') }}</a>
+                <a href="{{ route('help') }}" wire:navigate class="hover:text-zinc-900 dark:hover:text-white">{{ __('help') }}</a>
+            </div>
+        </footer>
 
         @persist('toast')
             <flux:toast.group>

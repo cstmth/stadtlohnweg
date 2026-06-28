@@ -162,7 +162,7 @@ new #[Layout('layouts::site')] #[Title('my_reservations')] class extends Compone
                                 @endif
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">{{ sprintf('%02d:00–%02d:00', $reservation->hour, $reservation->hour + 1) }}</td>
-                            <td class="px-4 py-3">{{ \App\Models\Reservation::BLOCKS[$reservation->block] ?? $reservation->block }}</td>
+                            <td class="px-4 py-3">{{ __(\App\Models\Reservation::BLOCKS[$reservation->block] ?? $reservation->block) }}</td>
                             <td class="px-4 py-3">{{ __(\App\Models\Reservation::APPLIANCES[$reservation->appliance] ?? $reservation->appliance) }}</td>
                             @guest<td class="px-4 py-3 font-medium">{{ $reservation->room_number }}</td>@endguest
                             <td class="px-4 py-3 text-right">
