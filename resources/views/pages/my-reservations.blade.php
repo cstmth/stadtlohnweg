@@ -187,7 +187,7 @@ new #[Layout('layouts::site')] #[Title('my_reservations')] class extends Compone
             </div>
             <div class="flex justify-end gap-2">
                 <flux:modal.close><flux:button variant="ghost">{{ __('cancel') }}</flux:button></flux:modal.close>
-                <flux:button wire:click="delete" variant="danger">{{ __('cancel_reservation') }}</flux:button>
+                <flux:button wire:click="delete" variant="danger" wire:loading.attr="disabled" wire:target="delete">{{ __('cancel_reservation') }}</flux:button>
             </div>
         </div>
     </flux:modal>

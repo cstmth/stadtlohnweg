@@ -438,8 +438,19 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
     </div>
 
     {{-- Kalender-Tabelle: durchgehend scrollbar --}}
-    <div class="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800" x-ref="grid">
-        <table class="table-fixed border-separate border-spacing-0 text-sm" style="width: {{ 3.5 + count($allDays) * 3 * 3.2 }}rem">
+    <div class="relative rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">
+        {{-- Loading Overlay für Blockwechsel --}}
+        <div wire:loading.block wire:target="block" class="absolute inset-0 z-50 rounded-xl bg-white/60 backdrop-blur-sm dark:bg-zinc-900/60">
+            <div class="sticky top-1/2 flex w-full -translate-y-1/2 justify-center">
+                <svg class="h-8 w-8 animate-spin text-sky-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl" x-ref="grid">
+            <table class="table-fixed border-separate border-spacing-0 text-sm" style="width: {{ 3.5 + count($allDays) * 3 * 3.2 }}rem">
             <colgroup>
                 <col style="width: 3.4rem">
                 @foreach ($allDays as $day)
@@ -538,12 +549,14 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                                     ])>
                                         @if ($res)
                                             <button
+                                                x-data="{ loading: false }"
                                                 type="button"
                                                 data-res-id="{{ $res->id }}"
                                                 title="{{ $res->room_number }}"
-                                                @click="$wire.manage({{ $res->id }}, $store.mine.get({{ $res->id }}))"
+                                                @click="loading = true; $wire.manage({{ $res->id }}, $store.mine.get({{ $res->id }})).finally(() => loading = false)"
+                                                :disabled="loading"
                                                 @class([
-                                                    'block w-full cursor-pointer truncate rounded-md px-1 py-1.5 text-xs font-medium transition',
+                                                    'relative block w-full cursor-pointer truncate rounded-md px-1 py-1.5 text-xs font-medium transition',
                                                     'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-200' => $mine || $justBooked,
                                                     'bg-rose-100 text-rose-800 hover:bg-rose-200 dark:bg-rose-900/40 dark:text-rose-200' => ! $mine && ! $justBooked,
                                                 ])
@@ -551,17 +564,29 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                                                     ? 'bg-emerald-100! text-emerald-800! hover:bg-emerald-200! dark:bg-emerald-900/50! dark:text-emerald-200!'
                                                     : ''"
                                             >
-                                                {{ $res->room_number }}
+                                                <span x-show="!loading">{{ $res->room_number }}</span>
+                                                <div x-show="loading" style="display: none;" class="absolute inset-0 flex items-center justify-center">
+                                                    <svg class="h-3 w-3 animate-spin text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                </div>
                                             </button>
                                         @elseif ($bookable)
                                             <button
+                                                x-data="{ loading: false }"
                                                 type="button"
-                                                wire:click="book('{{ $dateStr }}', {{ $hour }}, '{{ $appliance }}')"
-                                                class="block h-[28px] w-full cursor-pointer rounded-md px-1 py-1.5 text-xs text-zinc-400 transition hover:bg-sky-100 hover:text-sky-700 dark:hover:bg-sky-900/40 dark:hover:text-sky-300"
+                                                @click="loading = true; $wire.book('{{ $dateStr }}', {{ $hour }}, '{{ $appliance }}').finally(() => loading = false)"
+                                                :disabled="loading"
+                                                class="relative flex h-[28px] w-full items-center justify-center cursor-pointer rounded-md px-1 py-1.5 text-xs text-zinc-400 transition hover:bg-sky-100 hover:text-sky-700 dark:hover:bg-sky-900/40 dark:hover:text-sky-300"
                                             >
+                                                <svg x-show="loading" style="display: none;" class="h-4 w-4 animate-spin text-sky-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
                                             </button>
                                         @else
-                                            <div class="px-1 py-1.5 text-xs text-zinc-400 dark:text-zinc-500">–</div>
+                                            <div class="px-1 py-1.5 text-xs text-zinc-400 dark:text-zinc-500">⎯</div>
                                         @endif
                                     </td>
                                 @endforeach
@@ -615,6 +640,7 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                 </tr>
             </tbody>
         </table>
+    </div>
     </div>
 
     {{-- Legende --}}
