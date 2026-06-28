@@ -15,6 +15,9 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    // Geheimes Token, mit dem Cloud Scheduler den Schedule-Endpoint auslösen darf.
+    'scheduler_token' => env('SCHEDULER_TOKEN'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

@@ -1,0 +1,38 @@
+.git
+.github
+.gitignore
+.idea
+.vscode
+.DS_Store
+
+# Abhängigkeiten / Build-Artefakte (werden im Image neu erzeugt)
+node_modules
+vendor
+public/build
+public/hot
+
+# Lokale Umgebung & Secrets – niemals ins Image
+.env
+.env.*
+
+# Lokale SQLite-Datenbanken
+*.sqlite
+*.sqlite-journal
+database/*.sqlite*
+
+# Gecachte Paket-/Provider-Manifeste (sonst landet das Dev-Manifest im Image)
+bootstrap/cache/*.php
+
+# Logs & temporäre Laravel-Dateien
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/framework/testing/*
+
+# Tests & Tooling
+tests
+phpunit.xml
+.phpunit.result.cache
+pint.json
+phpstan.neon

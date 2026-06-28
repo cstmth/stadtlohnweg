@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\OAuthController;
+use App\Http\Controllers\RunScheduledTasksController;
+use App\Http\Middleware\EnsureEmailIsVerified;
+use App\Http\Middleware\EnsureProfileComplete;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -46,5 +49,10 @@ Route::livewire('profil-vervollstaendigen', 'pages::auth.complete-profile')
 Route::livewire('impressum', 'pages::legal.imprint')->name('imprint');
 Route::livewire('datenschutz', 'pages::legal.privacy')->name('privacy');
 Route::livewire('hilfe', 'pages::legal.help')->name('help');
+
+// Von Cloud Scheduler ausgelöste geplante Aufgaben (Ersatz für System-Cron).
+Route::get('tasks/run-scheduler', RunScheduledTasksController::class)
+    ->withoutMiddleware([EnsureEmailIsVerified::class, EnsureProfileComplete::class])
+    ->name('tasks.scheduler');
 
 require __DIR__.'/settings.php';

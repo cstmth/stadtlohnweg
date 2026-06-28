@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Cloud Run (und jeder Reverse Proxy) terminiert TLS und leitet per
+        // X-Forwarded-* weiter. Vertrauen ist nötig, damit Laravel https-URLs
+        // erzeugt (u. a. korrekte OAuth-Redirects).
+        $middleware->trustProxies(at: '*');
+
         $middleware->web(append: [
             SetLocale::class,
             EnsureEmailIsVerified::class,

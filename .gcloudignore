@@ -1,0 +1,26 @@
+# Steuert, was bei `gcloud run deploy --source .` zu Cloud Build hochgeladen wird.
+.git
+.github
+.idea
+.vscode
+.DS_Store
+
+node_modules
+vendor
+public/build
+public/hot
+
+.env
+.env.*
+
+*.sqlite
+*.sqlite-journal
+database/*.sqlite*
+
+bootstrap/cache/*.php
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+
+.phpunit.result.cache
