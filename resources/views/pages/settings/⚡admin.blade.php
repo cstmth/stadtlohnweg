@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Banner;
 use App\Models\DefectiveAppliance;
 use App\Models\DoenekenEvent;
 use App\Models\Reservation;
@@ -17,9 +18,20 @@ new #[Layout('layouts::site')] #[Title('admin')] class extends Component {
     public string $eventText = '';
     public bool $eventClosed = false;
 
+    public bool $bannerEnabled = false;
+    public string $bannerColor = 'neutral';
+    public string $bannerTextDe = '';
+    public string $bannerTextEn = '';
+
     public function mount(): void
     {
         abort_unless(Auth::user()->is_admin, 403);
+
+        $banner = Banner::current();
+        $this->bannerEnabled = $banner->enabled;
+        $this->bannerColor = $banner->color;
+        $this->bannerTextDe = $banner->text_de ?? '';
+        $this->bannerTextEn = $banner->text_en ?? '';
     }
 
     public function addAdmin(): void
@@ -93,6 +105,24 @@ new #[Layout('layouts::site')] #[Title('admin')] class extends Component {
         Flux::toast(variant: 'success', text: __('doeneken_event_deleted'));
     }
 
+    public function saveBanner(): void
+    {
+        $this->validate([
+            'bannerColor' => ['required', 'in:'.implode(',', array_keys(Banner::COLORS))],
+            'bannerTextDe' => ['nullable', 'string', 'max:255'],
+            'bannerTextEn' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        Banner::current()->update([
+            'enabled' => $this->bannerEnabled,
+            'color' => $this->bannerColor,
+            'text_de' => $this->bannerTextDe ?: null,
+            'text_en' => $this->bannerTextEn ?: null,
+        ]);
+
+        Flux::toast(variant: 'success', text: __('banner_saved'));
+    }
+
     public function with(): array
     {
         return [
@@ -101,6 +131,7 @@ new #[Layout('layouts::site')] #[Title('admin')] class extends Component {
             'blocks' => Reservation::BLOCKS,
             'appliances' => Reservation::APPLIANCES,
             'events' => DoenekenEvent::orderBy('date')->get(),
+            'bannerColors' => Banner::COLORS,
         ];
     }
 }; ?>
@@ -209,6 +240,31 @@ new #[Layout('layouts::site')] #[Title('admin')] class extends Component {
                     <flux:radio value="0" :label="__('doeneken_open_toggle')" />
                     <flux:radio value="1" :label="__('doeneken_closed_toggle')" />
                 </flux:radio.group>
+                <div class="flex justify-end">
+                    <flux:button variant="primary" type="submit">{{ __('save') }}</flux:button>
+                </div>
+            </form>
+        </div>
+
+        {{-- Banner --}}
+        <div class="mt-12 space-y-6">
+            <div>
+                <flux:heading>{{ __('banner_heading') }}</flux:heading>
+                <flux:subheading>{{ __('banner_sub') }}</flux:subheading>
+            </div>
+
+            <form wire:submit="saveBanner" class="space-y-3">
+                <flux:switch wire:model="bannerEnabled" :label="__('banner_enabled')" />
+
+                <flux:radio.group wire:model="bannerColor" variant="segmented" :label="__('banner_color')">
+                    @foreach ($bannerColors as $colorKey => $colorLabel)
+                        <flux:radio value="{{ $colorKey }}" :label="__($colorLabel)" />
+                    @endforeach
+                </flux:radio.group>
+
+                <flux:input wire:model="bannerTextDe" type="text" :label="__('banner_text_de')" />
+                <flux:input wire:model="bannerTextEn" type="text" :label="__('banner_text_en')" />
+
                 <div class="flex justify-end">
                     <flux:button variant="primary" type="submit">{{ __('save') }}</flux:button>
                 </div>
