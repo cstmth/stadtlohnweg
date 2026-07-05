@@ -396,6 +396,25 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
     // Zusammenhängende Bereiche für past/future zählen
     $pastDays = collect($allDays)->filter(fn ($d) => ($dayTypes[$d->format('Y-m-d')] ?? '') === 'past');
     $futureDays = collect($allDays)->filter(fn ($d) => ($dayTypes[$d->format('Y-m-d')] ?? '') === 'future');
+
+    // TEMPORARY: watermark bookable days up to 2026-07-31 as testing-only. Remove this whole block once real bookings start.
+    $testingOnlyUntil = \Illuminate\Support\Carbon::parse('2026-07-31');
+    $testingDayIndexes = [];
+    foreach ($allDays as $idx => $day) {
+        if (($dayTypes[$day->format('Y-m-d')] ?? '') === 'bookable' && $day->lte($testingOnlyUntil)) {
+            $testingDayIndexes[] = $idx;
+        }
+    }
+    $testingDaysCount = count($testingDayIndexes);
+    $testingLeftRem = $testingDaysCount > 0 ? 3.4 + $testingDayIndexes[0] * 3 * 3.4 : 0;
+    $testingWidthRem = $testingDaysCount * 3 * 3.4;
+
+    // Tile is wide enough to fit one full phrase plus a trailing gap, so the repeat never cuts a word off mid-tile.
+    $testingWatermarkTileText = e(__('testing_only_watermark'));
+    $testingWatermarkSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="467" height="112">'
+        .'<text x="20" y="76" font-family="sans-serif" font-weight="bold" font-size="52" fill="rgba(161,161,170,0.5)">'.$testingWatermarkTileText.'</text>'
+        .'</svg>';
+    $testingWatermarkUrl = 'data:image/svg+xml,'.rawurlencode($testingWatermarkSvg);
 @endphp
 
 <div
@@ -449,7 +468,7 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
             </div>
         </div>
 
-        <div class="overflow-x-auto rounded-xl" x-ref="grid">
+        <div class="relative overflow-x-auto rounded-xl" x-ref="grid">
             <table class="table-fixed border-separate border-spacing-0 text-sm" style="width: {{ 3.5 + count($allDays) * 3 * 3.2 }}rem">
             <colgroup>
                 <col style="width: 3.4rem">
@@ -640,6 +659,14 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                 </tr>
             </tbody>
         </table>
+
+        {{-- TEMPORARY: watermark over the testing-only date range, remove once real bookings start --}}
+        @if ($testingDaysCount > 0)
+            <div
+                class="pointer-events-none absolute inset-y-0 overflow-hidden"
+                style="left: {{ $testingLeftRem }}rem; width: {{ $testingWidthRem }}rem; background-image: url('{{ $testingWatermarkUrl }}'); background-repeat: repeat-x; background-position: left center;"
+            ></div>
+        @endif
     </div>
     </div>
 

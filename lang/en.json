@@ -218,5 +218,6 @@
     "banner_saved": "Banner saved.",
     "imprint": "Imprint",
     "privacy_policy": "Privacy policy",
-    "help": "Help"
+    "help": "Help",
+    "testing_only_watermark": "For testing only"
 }
