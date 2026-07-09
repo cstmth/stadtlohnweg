@@ -172,7 +172,7 @@
     "instruction_1": "Reserve slots for washing machines and dryers up to four weeks in advance. You can book without an account — just enter a PIN that lets you cancel the reservation later. With an account, you don't need to enter a PIN or room number each time, and you can manage your reservations from any device. Reservations are deleted one day after they expire, accounts after two years of inactivity.",
     "rules_card_heading": "Rules",
     "rule_1": "You may use the appliances from 7:00 to 22:00 as to not disturb the tenants directly above the machines.",
-    "rule_2": "You may remove other people's laundry from the drums and place it on the tables once your slot has started.",
+    "rule_2": "If another person's laundry is still in your booked machine 10 minutes after your slot has started, you may stop the wash cycle, remove the laundry from the drum, and place it on the tables or machines.",
     "rule_3": "Please lock the door to the laundry room when leaving to prevent any further break-ins.",
     "rules_below_list": "These rules have developed over time and are not provided by the Studierendenwerk or legally binding. However, it has proven to work well, so please use them. Thank you!",
     "toast_cannot_cancel_past": "Past reservations cannot be cancelled.",
