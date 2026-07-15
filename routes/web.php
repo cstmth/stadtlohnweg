@@ -55,9 +55,4 @@ Route::get('tasks/run-scheduler', RunScheduledTasksController::class)
     ->withoutMiddleware([EnsureEmailIsVerified::class, EnsureProfileComplete::class])
     ->name('tasks.scheduler');
 
-// Manuelle Ausführung von Artisan-Befehlen über das Web (mit Token-Schutz).
-Route::get('tasks/artisan', \App\Http\Controllers\RunArtisanCommandController::class)
-    ->withoutMiddleware([EnsureEmailIsVerified::class, EnsureProfileComplete::class])
-    ->name('tasks.artisan');
-
 require __DIR__.'/settings.php';

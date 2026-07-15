@@ -36,7 +36,6 @@ Eine Übersicht der für den Produktionsbetrieb nötigen Variablen findest du au
 | `SESSION_DRIVER` | Treiber für Sessions | `cookie` *(Zwingend, da SQLite auf GCS zu langsam ist)* |
 | `CACHE_STORE` | Treiber für Cache | `array` *(Zwingend, selbiger Grund wie Sessions)* |
 | `SCHEDULER_TOKEN` | Geheimes Passwort für den Cronjob | `mein-geheimes-passwort-123` |
-| `ARTISAN_TOKEN` | Geheimes Passwort für Artisan-Befehle | `artisan-geheim-456` |
 | `GOOGLE_CLIENT_ID` | OAuth Google ID | `...` |
 | `GOOGLE_CLIENT_SECRET`| OAuth Google Secret | `...` |
 
@@ -64,19 +63,17 @@ Cloud Scheduler ruft nun minütlich die Route auf. Der Controller validiert den 
 
 ---
 
-## 4. Manuelle Artisan Befehle ausführen
+## 4. Administrative Befehle ausführen (z. B. Admin ernennen, Caches leeren)
 
-Um administrative Befehle (wie das Leeren von Caches) auf dem produktiven Cloud Run Service auszuführen, existiert eine gesicherte HTTP-Route.
+Es gibt bewusst **keine** Web-Route, über die beliebige Artisan-Befehle ausgeführt werden können (Sicherheitsrisiko: ein
+geleaktes Token hätte damit vollen Zugriff, inkl. Rechteausweitung über `admin:grant`). Administrative Aufgaben werden
+stattdessen direkt über die Cloud Run Konsole bzw. eine direkte Verbindung zur produktiven Umgebung ausgeführt:
 
-**URL-Format:**
-`https://deine-cloud-run-url.run.app/tasks/artisan?token=DEIN_ARTISAN_TOKEN&command=BEFEHL`
-
-**Beispiele (einfach im Browser aufrufen):**
-- **Cache leeren:** `/tasks/artisan?token=artisan-geheim-456&command=cache:clear`
-- **Views leeren:** `/tasks/artisan?token=artisan-geheim-456&command=view:clear`
-- **Datenbank seeden:** `/tasks/artisan?token=artisan-geheim-456&command=db:seed`
-
-*(Alternativ kann das Token auch als HTTP-Header `X-Artisan-Token` übergeben werden).*
+1. In der Google Cloud Console zu **Cloud Run → Service → Revisionen** navigieren und darüber eine Shell in den
+   laufenden Container öffnen (oder `gcloud run services proxy` nutzen), und dort z. B.
+   `php artisan admin:grant nutzer@example.com` oder `php artisan cache:clear` direkt ausführen.
+2. Alternativ die SQLite-Datenbankdatei aus dem Cloud Storage Bucket herunterladen bzw. lokal mounten und die
+   gewünschte Änderung (z. B. `UPDATE users SET is_admin = 1 WHERE email = '...'`) direkt per SQLite-Client vornehmen.
 
 ---
 

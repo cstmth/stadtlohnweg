@@ -18,9 +18,6 @@ return [
     // Geheimes Token, mit dem Cloud Scheduler den Schedule-Endpoint auslösen darf.
     'scheduler_token' => env('SCHEDULER_TOKEN'),
 
-    // Geheimes Token zur Ausführung beliebiger Artisan Befehle über das Web.
-    'artisan_token' => env('ARTISAN_TOKEN'),
-
     /*
     |--------------------------------------------------------------------------
     | Application Environment
