@@ -25,6 +25,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string|null $provider
  * @property string|null $provider_id
  * @property string|null $delete_token
+ * @property Carbon|null $delete_token_expires_at
  * @property bool $is_admin
  * @property string $email
  * @property Carbon|null $email_verified_at
@@ -36,8 +37,8 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'room_number', 'preferred_block', 'locale', 'provider', 'provider_id', 'delete_token', 'is_admin', 'email', 'password'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'delete_token'])]
+#[Fillable(['name', 'room_number', 'preferred_block', 'locale', 'provider', 'provider_id', 'delete_token', 'delete_token_expires_at', 'is_admin', 'email', 'password'])]
+#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'delete_token', 'delete_token_expires_at'])]
 class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
@@ -52,6 +53,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     {
         return [
             'email_verified_at' => 'datetime',
+            'delete_token_expires_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

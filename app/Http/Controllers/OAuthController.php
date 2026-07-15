@@ -31,7 +31,10 @@ class OAuthController extends Controller
 
         abort_unless($user && $user->provider === $provider, 403);
 
-        $user->update(['delete_token' => bin2hex(random_bytes(32))]);
+        $user->update([
+            'delete_token' => bin2hex(random_bytes(32)),
+            'delete_token_expires_at' => now()->addMinutes(5),
+        ]);
 
         return Socialite::driver($provider)->redirect();
     }
@@ -49,14 +52,23 @@ class OAuthController extends Controller
             ->first();
 
         if ($pendingDelete) {
-            $pendingDelete->reservations()->delete();
+            $tokenExpired = $pendingDelete->delete_token_expires_at === null
+                || $pendingDelete->delete_token_expires_at->isPast();
 
-            Auth::logout();
-            $pendingDelete->delete();
-            session()->invalidate();
-            session()->regenerateToken();
+            if (! $tokenExpired) {
+                $pendingDelete->reservations()->delete();
 
-            return redirect()->route('home');
+                Auth::logout();
+                $pendingDelete->delete();
+                session()->invalidate();
+                session()->regenerateToken();
+
+                return redirect()->route('home');
+            }
+
+            // Löschanfrage nie abgeschlossen (z. B. Tab geschlossen) — abgelaufenes Token verwerfen,
+            // damit ein späterer normaler Login das Konto nicht versehentlich löscht.
+            $pendingDelete->update(['delete_token' => null, 'delete_token_expires_at' => null]);
         }
 
         $user = User::where('provider', $provider)
