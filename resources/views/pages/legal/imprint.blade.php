@@ -12,6 +12,6 @@ new #[Layout('layouts::site')] #[Title('imprint')] class extends Component {
     <flux:heading size="xl" level="1" class="mb-6">{{ __('imprint') }}</flux:heading>
 
     <div class="prose dark:prose-invert">
-        {{-- Inhalt folgt --}}
+        @include('legal.imprint-' . app()->getLocale())
     </div>
 </div>

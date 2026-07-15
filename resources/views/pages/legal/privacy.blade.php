@@ -12,6 +12,6 @@ new #[Layout('layouts::site')] #[Title('privacy_policy')] class extends Componen
     <flux:heading size="xl" level="1" class="mb-6">{{ __('privacy_policy') }}</flux:heading>
 
     <div class="prose dark:prose-invert">
-        {{-- Inhalt folgt --}}
+        @include('legal.privacy-' . app()->getLocale())
     </div>
 </div>
