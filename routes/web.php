@@ -45,10 +45,9 @@ Route::livewire('profil-vervollstaendigen', 'pages::auth.complete-profile')
     ->middleware('auth')
     ->name('profile.complete');
 
-// Statische Seiten (Impressum, Datenschutz, Hilfe).
+// Statische Seiten (Impressum, Datenschutz).
 Route::livewire('impressum', 'pages::legal.imprint')->name('imprint');
 Route::livewire('datenschutz', 'pages::legal.privacy')->name('privacy');
-Route::livewire('hilfe', 'pages::legal.help')->name('help');
 
 // Von Cloud Scheduler ausgelöste geplante Aufgaben (Ersatz für System-Cron).
 Route::get('tasks/run-scheduler', RunScheduledTasksController::class)

@@ -81,7 +81,6 @@
             <div class="container mx-auto flex flex-wrap justify-center gap-x-6 gap-y-2 px-4 text-sm text-zinc-500 dark:text-zinc-400">
                 <a href="{{ route('imprint') }}" wire:navigate class="hover:text-zinc-900 dark:hover:text-white">{{ __('imprint') }}</a>
                 <a href="{{ route('privacy') }}" wire:navigate class="hover:text-zinc-900 dark:hover:text-white">{{ __('privacy_policy') }}</a>
-                <a href="{{ route('help') }}" wire:navigate class="hover:text-zinc-900 dark:hover:text-white">{{ __('help') }}</a>
             </div>
         </footer>
 
