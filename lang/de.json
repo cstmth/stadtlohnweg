@@ -178,6 +178,8 @@
     "toast_cannot_cancel_past": "Vergangene Reservierungen können nicht storniert werden.",
     "oauth_or": "Oder weiter mit",
     "oauth_google": "Weiter mit Google",
+    "oauth_email_conflict": "Für diese E-Mail-Adresse existiert bereits ein Konto. Bitte melde dich stattdessen mit deinem Passwort an.",
+    "email_taken_via_oauth": "Diese E-Mail-Adresse ist bereits über die Google-Anmeldung registriert. Bitte nutze stattdessen die Google-Anmeldung.",
     "from_21": "ab 21 Uhr",
     "doeneken_line1": "Döneken hat offen!",
     "doeneken_line2": "Glückszahl: :number",

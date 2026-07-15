@@ -178,6 +178,8 @@
     "toast_cannot_cancel_past": "Past reservations cannot be cancelled.",
     "oauth_or": "Or continue with",
     "oauth_google": "Continue with Google",
+    "oauth_email_conflict": "An account with this email address already exists. Please sign in with your password instead.",
+    "email_taken_via_oauth": "This email address is already registered via Google sign-in. Please continue with Google instead.",
     "from_21": "from 9 p.m.",
     "doeneken_line1": "Döneken is open!",
     "doeneken_line2": "Lucky number: :number",

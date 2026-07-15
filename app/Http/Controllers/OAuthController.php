@@ -64,24 +64,21 @@ class OAuthController extends Controller
             ->first();
 
         if (! $user) {
-            $user = User::where('email', $socialUser->getEmail())
-                ->whereNull('provider')
-                ->first();
-
-            if ($user) {
-                $user->update([
-                    'provider' => $provider,
-                    'provider_id' => $socialUser->getId(),
-                ]);
-            } else {
-                $user = User::create([
-                    'name' => $socialUser->getName() ?? $socialUser->getEmail(),
-                    'email' => $socialUser->getEmail(),
-                    'provider' => $provider,
-                    'provider_id' => $socialUser->getId(),
-                    'email_verified_at' => now(),
+            // Ein Konto mit dieser E-Mail über einen anderen Weg (Passwort oder anderer Provider) darf
+            // nicht automatisch mit diesem OAuth-Login verknüpft werden (Kontoübernahme-Risiko).
+            if (User::where('email', $socialUser->getEmail())->exists()) {
+                return redirect()->route('login')->withErrors([
+                    'email' => __('oauth_email_conflict'),
                 ]);
             }
+
+            $user = User::create([
+                'name' => $socialUser->getName() ?? $socialUser->getEmail(),
+                'email' => $socialUser->getEmail(),
+                'provider' => $provider,
+                'provider_id' => $socialUser->getId(),
+                'email_verified_at' => now(),
+            ]);
         }
 
         Auth::login($user, true);

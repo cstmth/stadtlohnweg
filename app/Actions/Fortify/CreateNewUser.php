@@ -27,7 +27,20 @@ class CreateNewUser implements CreatesNewUsers
         Validator::make($input, [
             ...$this->profileRules(),
             'password' => $this->passwordRules(),
-        ])->validate();
+        ])->after(function ($validator) use ($input): void {
+            // Kein Zusammenführen mit einem bestehenden OAuth-Konto (Kontoübernahme-Risiko):
+            // eigene, konkretere Fehlermeldung statt der generischen "bereits vergeben".
+            if (! isset($input['email'])) {
+                return;
+            }
+
+            $existing = User::where('email', $input['email'])->whereNotNull('provider')->first();
+
+            if ($existing) {
+                $validator->errors()->forget('email');
+                $validator->errors()->add('email', __('email_taken_via_oauth'));
+            }
+        })->validate();
 
         return User::create([
             'name' => $input['name'],
