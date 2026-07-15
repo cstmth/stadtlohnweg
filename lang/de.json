@@ -46,6 +46,7 @@
     "toast_saved_guest": "Reservierung gespeichert. In diesem Browser kannst du sie ohne PIN wieder stornieren.",
     "toast_belongs_other": "Diese Reservierung gehört einem anderen Konto.",
     "toast_pin_wrong": "Die PIN ist nicht korrekt.",
+    "toast_pin_too_many_attempts": "Zu viele Versuche. Bitte versuche es in einer Minute erneut.",
     "toast_cancelled": "Reservierung storniert.",
     "my_reservations": "Meine Reservierungen",
     "myres_retention": "Vergangene Reservierungen bleiben bis zu :days Tage sichtbar und werden danach automatisch gelöscht.",

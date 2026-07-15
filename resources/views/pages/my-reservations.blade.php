@@ -4,6 +4,7 @@ use App\Models\Reservation;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -85,7 +86,18 @@ new #[Layout('layouts::site')] #[Title('my_reservations')] class extends Compone
 
             $knownPin = $this->browserItems[(string) $this->confirmingId] ?? null;
 
-            if ($reservation && (! $knownPin || ! Hash::check($knownPin, (string) $reservation->pin))) {
+            if ($reservation && $knownPin) {
+                $pinLimitKey = 'guest-pin:'.request()->ip().'|'.$reservation->id;
+
+                if (RateLimiter::tooManyAttempts($pinLimitKey, 5)) {
+                    $reservation = null;
+                } elseif (! Hash::check($knownPin, (string) $reservation->pin)) {
+                    RateLimiter::hit($pinLimitKey, 60);
+                    $reservation = null;
+                } else {
+                    RateLimiter::clear($pinLimitKey);
+                }
+            } elseif ($reservation) {
                 $reservation = null;
             }
         }

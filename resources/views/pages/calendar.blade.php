@@ -8,6 +8,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -339,11 +340,28 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                 attributes: ['cancelPin' => 'PIN'],
             );
 
+            $pinLimitKey = 'guest-pin:'.request()->ip().'|'.$res->id;
+
+            if (RateLimiter::tooManyAttempts($pinLimitKey, 5)) {
+                $this->knownFromBrowser = false;
+                $this->cancelPin = '';
+                $this->addError('cancelPin', __('toast_pin_too_many_attempts'));
+
+                return;
+            }
+
             if (! Hash::check($this->cancelPin, (string) $res->pin)) {
+                RateLimiter::hit($pinLimitKey, 60);
+                // Falsche (evtl. veraltete, aus dem Browser vorausgefüllte) PIN: manuelles
+                // Eingabefeld anzeigen, damit erneutes Versuchen überhaupt möglich ist.
+                $this->knownFromBrowser = false;
+                $this->cancelPin = '';
                 $this->addError('cancelPin', __('toast_pin_wrong'));
 
                 return;
             }
+
+            RateLimiter::clear($pinLimitKey);
         }
 
         $id = $res->id;

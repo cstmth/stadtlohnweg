@@ -46,6 +46,7 @@
     "toast_saved_guest": "Reservation saved. In this browser you can cancel it again without a PIN.",
     "toast_belongs_other": "This reservation belongs to another account.",
     "toast_pin_wrong": "The PIN is not correct.",
+    "toast_pin_too_many_attempts": "Too many attempts. Please try again in a minute.",
     "toast_cancelled": "Reservation cancelled.",
     "my_reservations": "My reservations",
     "myres_retention": "Past reservations stay visible for up to :days days and are then deleted automatically.",
