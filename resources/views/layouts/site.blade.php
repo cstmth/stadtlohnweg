@@ -23,7 +23,7 @@
                 </flux:navmenu>
             </flux:dropdown>
 
-            <a href="{{ route('home') }}" wire:navigate class="flex items-center gap-2 font-semibold">
+            <a href="{{ route('home') }}" wire:navigate class="hidden lg:inline-flex flex items-center gap-2 font-semibold">
                 <flux:icon name="home" variant="mini" class="text-sky-600" />
                 <span class="max-sm:hidden">{{ __('site_name') }}</span>
                 <span class="sm:hidden">{{ __('site_name_short') }}</span>
