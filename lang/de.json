@@ -19,7 +19,7 @@
     "legend_booked": "belegt",
     "legend_yours": "eigene Reservierung",
     "legend_free": "frei",
-    "legend_defective": "defekt",
+    "legend_defective": "defekt, aber Angabe kann veraltet sein",
     "book_title": "Slot reservieren",
     "book_submit": "Reservieren",
     "reservation": "Reservierung",

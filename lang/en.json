@@ -19,7 +19,7 @@
     "legend_booked": "booked",
     "legend_yours": "your reservation",
     "legend_free": "free",
-    "legend_defective": "defective",
+    "legend_defective": "defective, but information may be outdated",
     "book_title": "Reserve slot",
     "book_submit": "Reserve",
     "reservation": "Reservation",
