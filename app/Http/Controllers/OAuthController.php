@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
+use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse;
 
 class OAuthController extends Controller
 {
@@ -13,7 +15,7 @@ class OAuthController extends Controller
      */
     private const PROVIDERS = ['google'];
 
-    public function redirect(string $provider)
+    public function redirect(string $provider): SymfonyRedirectResponse
     {
         abort_unless(in_array($provider, self::PROVIDERS, true), 404);
 
@@ -23,7 +25,7 @@ class OAuthController extends Controller
     /**
      * Erneute Anmeldung beim Provider anstoßen, um die Konto-Löschung zu bestätigen.
      */
-    public function redirectForDeletion(string $provider)
+    public function redirectForDeletion(string $provider): SymfonyRedirectResponse
     {
         abort_unless(in_array($provider, self::PROVIDERS, true), 404);
 
@@ -39,7 +41,7 @@ class OAuthController extends Controller
         return Socialite::driver($provider)->redirect();
     }
 
-    public function callback(string $provider)
+    public function callback(string $provider): RedirectResponse
     {
         abort_unless(in_array($provider, self::PROVIDERS, true), 404);
 

@@ -3,7 +3,6 @@
 namespace App\Http\Middleware;
 
 use Closure;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -15,7 +14,6 @@ class EnsureEmailIsVerified
 
         if ($user
             && ! $user->provider
-            && $user instanceof MustVerifyEmail
             && ! $user->hasVerifiedEmail()
             && ! $request->routeIs('verification.*', 'logout', 'livewire.*', 'default-livewire.*')
         ) {

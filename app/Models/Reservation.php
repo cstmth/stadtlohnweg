@@ -91,6 +91,9 @@ class Reservation extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -133,6 +136,9 @@ class Reservation extends Model
     /**
      * Scope: nur Reservierungen, die noch nicht abgelaufen sind
      * (heutiger Tag bleibt vollständig sichtbar).
+     *
+     * @param Builder<Reservation> $query
+     * @return Builder<Reservation>
      */
     public function scopeUpcoming(Builder $query): Builder
     {
@@ -141,6 +147,9 @@ class Reservation extends Model
 
     /**
      * Scope: innerhalb der Aufbewahrungsfrist (für "Meine Reservierungen").
+     *
+     * @param Builder<Reservation> $query
+     * @return Builder<Reservation>
      */
     public function scopeWithinRetention(Builder $query): Builder
     {
