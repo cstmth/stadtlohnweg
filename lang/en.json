@@ -198,7 +198,7 @@
     "defective_sub": "Appliances marked as defective are shown with a striped pattern in the schedule.",
     "defective_warning": "This appliance is currently marked as defective. If it is working again, please let the dorm council know.",
     "doeneken_heading": "Döneken",
-    "doeneken_sub": "Manage special openings and closures. Wednesdays and Fridays are open by default.",
+    "doeneken_sub": "Manage special openings and closures. Tuesdays and Fridays are open by default.",
     "doeneken_event_saved": "Döneken event saved.",
     "doeneken_event_deleted": "Döneken event deleted.",
     "doeneken_closed_label": "Closed",
