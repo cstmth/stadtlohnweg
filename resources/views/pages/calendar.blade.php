@@ -164,13 +164,13 @@ new #[Layout('layouts::site')] #[Title('schedule_title')] class extends Componen
                 } else {
                     $text = $override->custom_text
                         ? str_replace('{lucky}', (string) $luckyNumber, $override->custom_text)
-                        : __('doeneken_line1')."\n".__('doeneken_line2', ['number' => $luckyNumber]);
+                        : __('doeneken_line1') /*."\n".__('doeneken_line2', ['number' => $luckyNumber])*/;
                     $result[$dateStr] = ['open' => true, 'text' => $text];
                 }
             } elseif ($isDefaultDay) {
                 $result[$dateStr] = [
                     'open' => true,
-                    'text' => __('doeneken_line1')."\n".__('doeneken_line2', ['number' => $luckyNumber]),
+                    'text' => __('doeneken_line1') /*."\n".__('doeneken_line2', ['number' => $luckyNumber]) */,
                 ];
             } else {
                 $result[$dateStr] = ['open' => false, 'text' => null];
