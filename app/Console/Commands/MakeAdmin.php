@@ -13,10 +13,16 @@ class MakeAdmin extends Command
 
     public function handle(): int
     {
-        $user = User::where('email', $this->argument('email'))->first();
+        $email = $this->argument('email');
+
+        if (! is_string($email)) {
+            return self::INVALID;
+        }
+
+        $user = User::where('email', $email)->first();
 
         if (! $user) {
-            $this->error("Kein Nutzer mit E-Mail \"{$this->argument('email')}\" gefunden.");
+            $this->error("Kein Nutzer mit E-Mail \"{$email}\" gefunden.");
 
             return self::FAILURE;
         }

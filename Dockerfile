@@ -23,7 +23,30 @@ COPY --from=vendor /app/vendor ./vendor
 RUN npm run build
 
 # ---------- Stage 3: Runtime (FrankenPHP) ----------
-FROM dunglas/frankenphp:1-php8.5-alpine AS runtime
+# PHP2Shell (CVE-2026-109618/-109619) ist erst ab PHP 8.5.12 behoben, das
+# offizielle FrankenPHP-Image liefert aber noch 8.5.11. Deshalb setzen wir das
+# FrankenPHP-Binary (linkt libphp.so dynamisch, ABI innerhalb 8.5.x stabil) auf
+# das gepatchte offizielle ZTS-Image. Sobald dunglas/frankenphp:1-php8.5-alpine
+# PHP >= 8.5.12 enthält, kann diese Stage wieder einfach
+# `FROM dunglas/frankenphp:1-php8.5-alpine` sein.
+FROM dunglas/frankenphp:1.13.1-php8.5.11-alpine AS frankenphp
+
+FROM php:8.5.12-zts-alpine3.24 AS runtime
+
+RUN apk add --no-cache ca-certificates libcap mailcap libstdc++ brotli-libs
+
+COPY --from=frankenphp /usr/local/lib/libwatcher* /usr/local/lib/
+COPY --from=frankenphp /usr/local/bin/frankenphp /usr/local/bin/install-php-extensions /usr/local/bin/
+COPY --from=frankenphp /etc/caddy /etc/caddy
+COPY --from=frankenphp /etc/frankenphp /etc/frankenphp
+RUN ldconfig /usr/local/lib \
+    && setcap cap_net_bind_service=+ep /usr/local/bin/frankenphp \
+    && mkdir -p /config/caddy /data/caddy \
+    && frankenphp version
+
+ENV GODEBUG=cgocheck=0 \
+    XDG_CONFIG_HOME=/config \
+    XDG_DATA_HOME=/data
 
 WORKDIR /app
 

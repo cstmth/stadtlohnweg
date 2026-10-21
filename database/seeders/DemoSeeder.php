@@ -59,6 +59,6 @@ class DemoSeeder extends Seeder
             Reservation::insert($chunk);
         }
 
-        $this->command->info("Erstellt: {$take} Reservierungen (".round($take / count($slots) * 100)." % Auslastung).");
+        $this->command->info("Erstellt: {$take} Reservierungen (".round($take / count($slots) * 100).' % Auslastung).');
     }
 }
